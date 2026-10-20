@@ -161,7 +161,7 @@
     return done;
   }
   /** Pide una respuesta completa: si el servidor corta por tiempo, pide la continuación sola. */
-  async function ask(history, mode, signal, onText) {
+  async function ask(history, mode, signal, onText, onSources) {
     let text = "", cont = null, r;
     do {
       const seg = text;
@@ -169,6 +169,7 @@
       r = await post("/api/pilot/chat", body, signal, ev => {
         if (ev.t === "d") { text += ev.v; onText(text); }
         else if (ev.t === "reset") { text = seg; onText(text); }
+        else if (ev.t === "sources" && onSources) onSources(ev.items || []);
       });
       cont = r.cont;
       if (info && r.remaining !== null && r.remaining !== undefined) { info.usedToday = Math.max(0, info.perDay - r.remaining); info.usedMonth = r.usedMonth ?? info.usedMonth; renderPlan(); }
@@ -210,7 +211,7 @@
     const ac = new AbortController(); running.set(chat.id, ac);
     renderList(); if (chat.id === current) renderThread(true); syncComposer();
     try {
-      const r = await ask(history, "chat", ac.signal, text => { bot.content = text; paint(chat.id); });
+      const r = await ask(history, "chat", ac.signal, text => { bot.content = text; paint(chat.id); }, items => { bot.sources = items; });
       bot.stop = r.stop;
     } catch (e) {
       if (e.name === "AbortError") bot.stop = "stopped";
@@ -275,6 +276,11 @@
       ${warn ? `<p class="form-msg" role="status">${esc(warn)}</p>` : ""}
       <div class="pl-chips">${CHIPS.map((c, i) => `<button type="button" class="pl-chip" data-chip="${i}"><b>${c[0]} ${T(c[1], c[2])}</b><span>${T(c[3], c[4])}</span></button>`).join("")}</div></div>`;
   }
+  // Fuentes de la base de conocimiento que se consultaron para responder.
+  const sourcesHTML = list => `<div class="pl-srcs"><span>${T("Fuentes consultadas", "Sources")}</span>${list.map(x => {
+    const url = x.url && safeUrl(x.url);
+    return url ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(x.title)}</a>` : `<b>${esc(x.title)}</b>`;
+  }).join("")}</div>`;
   function msgHTML(m, i, chat, { isLast, lastUser }) {
     if (m.role === "user") {
       const canEdit = lastUser && !running.has(chat.id);
@@ -283,6 +289,7 @@
     const live = m.pending && running.has(chat.id);
     let body = m.content ? md(m.content, live) : live ? '<span class="pl-typing" aria-label="Escribiendo"><i></i><i></i><i></i></span>' : "";
     if (m.error) body += `<p class="form-msg pl-retry" role="alert">${esc(m.errorMsg || "Error")}</p>`;
+    if (!live && m.sources?.length) body += sourcesHTML(m.sources);
     let tools = "";
     if (!live) {
       const b = (act, ic, label, extra = "") => `<button type="button" data-act="${act}"${extra}>${icon(ic)}<span>${label}</span></button>`;
@@ -344,7 +351,7 @@
   async function runTask(t) {
     const ac = new AbortController(); running.set(t.id, ac);
     t.status = "running"; t.content = ""; delete t.error; saveTasks(); paintTasks();
-    try { const r = await ask([{ role: "user", content: t.prompt }], "task", ac.signal, text => { t.content = text; paint(t.id); }); t.status = "done"; t.stop = r.stop; }
+    try { const r = await ask([{ role: "user", content: t.prompt }], "task", ac.signal, text => { t.content = text; paint(t.id); }, items => { t.sources = items; }); t.status = "done"; t.stop = r.stop; }
     catch (e) { t.status = "error"; t.error = e.name === "AbortError" ? T("Cancelada.", "Cancelled.") : e.message; if (e.code === "quota") tasks.filter(x => x.status === "queued").forEach(x => { x.status = "error"; x.error = e.message; }); }
     finally { running.delete(t.id); saveTasks(); paintTasks(); renderList(); pump(); }
   }
@@ -368,6 +375,7 @@
         <div class="pl-tcard-top"><h4>${esc(t.prompt)}</h4><span class="pl-state ${t.status}">${T(...STATE[t.status])}</span></div>
         ${t.content ? `<div class="md">${md(t.content, live)}</div>` : live ? '<span class="pl-typing"><i></i><i></i><i></i></span>' : ""}
         ${t.error ? `<p class="form-msg">${esc(t.error)}</p>` : ""}
+        ${!live && t.sources?.length ? sourcesHTML(t.sources) : ""}
         <div class="pl-tools">${tools}</div></article>`;
     }).join("");
   }

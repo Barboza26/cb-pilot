@@ -31,6 +31,19 @@ Calculado con unos ₡500 por dólar; revisá el tipo de cambio. Mientras no car
 
 ✅ = se puede hacer bien con lo que ya tenemos · ⚠️ = se puede, con costo o cuidado · ❌ = no conviene / no es posible
 
+### Ya hecho
+- ✅ **Base de conocimiento** (enlaces, archivos y textos que la IA consulta y cita).
+
+### Para la base de conocimiento
+| Idea | Viabilidad | Nota |
+|---|---|---|
+| Leer un sitio completo desde su `sitemap.xml` | ✅ | Con un límite de páginas para no pasar el tiempo de Netlify. |
+| Actualizar los enlaces solos cada semana | ✅ | Función programada de Netlify. |
+| «Guardar en la base» desde una respuesta del chat (para el dueño) | ✅ | Así lo que Pilot responde bien queda como conocimiento. |
+| Bases distintas por plan o por cliente («Tu propio Pilot») | ⚠️ | La pieza clave para vender asistentes a otros negocios. |
+| Búsqueda por significado (embeddings) en vez de por palabras | ⚠️ | Anthropic no ofrece embeddings; requiere otro proveedor. Útil recién con miles de fuentes. |
+| Word (.docx) y Excel directos | ⚠️ | Librerías extra; hoy se resuelve guardándolos como PDF o CSV. |
+
 ### A. Experiencia de chat
 | Idea | Viabilidad | Nota |
 |---|---|---|

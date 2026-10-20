@@ -16,7 +16,8 @@ Funciona con modelos Claude de Anthropic. Cuando alguien necesita una página we
 | Vista previa | Las landings y diseños HTML se ven en vivo (escritorio o celular) y se descargan. Aislada, sin scripts. |
 | Historial | Buscar, fijar, renombrar y eliminar. Se guarda **solo en el dispositivo** del usuario. |
 | Planes | Gratis (Claude Haiku 5.5), Pro (Claude Sonnet 5.5) y Max (Claude Opus 5.5), con códigos de acceso que crea el dueño. |
-| Panel `/admin/` | Gasto del mes contra el presupuesto, mensajes por plan y por día, pausa inmediata, precios, códigos y auditoría. |
+| **Base de conocimiento** | Desde el panel le das enlaces, archivos (PDF, TXT, MD, CSV, JSON, HTML) o textos. CB Pilot los consulta antes de responder y muestra «Fuentes consultadas» bajo la respuesta. Cuanto más agregás, más sabe. |
+| Panel `/admin/` | Gasto del mes contra el presupuesto, mensajes por plan y por día, pausa inmediata, precios, códigos, base de conocimiento y auditoría. |
 | Presupuesto | Tope mensual (US$25 por defecto); el plan gratis se pausa al 70 % para reservar el resto a quienes pagan. |
 | Idiomas | Español e inglés (detecta el idioma del navegador). |
 | Celular | Historial deslizable, vista previa a pantalla completa, instalable como app. |
@@ -48,11 +49,25 @@ Cada pull request genera una vista previa aislada: sus datos van a almacenes `pr
 3. «Copiar mensaje para el cliente» y pegáselo por WhatsApp. El código se muestra **una sola vez** (el servidor guarda solo una huella).
 4. El cliente lo activa en CB Pilot → Planes. «Desactivar» le quita el acceso al instante.
 
+## Enseñarle cosas nuevas (base de conocimiento)
+
+`/admin/` → **Conocimiento**:
+
+- **Enlaces:** pegá hasta 5 por vez (páginas o PDF públicos). «Actualizar» vuelve a leerlos cuando la página cambia; el mismo enlace nunca se duplica.
+- **Archivos:** PDF, TXT, MD, CSV, JSON o HTML de hasta 5 MB. Los de Word, guardalos como PDF.
+- **Texto:** notas, preguntas frecuentes, precios, políticas.
+- **Probar:** escribís una pregunta y ves qué fragmentos encontraría.
+- Cada fuente se puede ver (cómo la leyó), desactivar o eliminar.
+
+Cómo la usa: mientras la base sea chica (hasta ~24 000 caracteres) se le da completa en cada mensaje, guardada en caché (barato). Cuando crece, busca solo los fragmentos relacionados con la pregunta (búsqueda por palabras, sin servicios externos) y le da hasta ~14 000 caracteres. Capacidad: 500 fuentes y 6 millones de caracteres. Lo que dicen las fuentes se trata como información, nunca como instrucciones.
+
+**Costo:** cada mensaje lleva algo más de texto. Con el plan gratis (Haiku) sigue siendo una fracción de centavo; en Pro y Max puede sumar alrededor de US$0,01 por mensaje cuando la base es grande.
+
 ## Probar en tu computadora (sin gastar)
 
 ```bash
 npm install
-npm test        # pruebas de la API con IA simulada
+npm test        # pruebas de la API y de la base de conocimiento, con IA simulada
 npm run dev     # http://localhost:8899 con respuestas simuladas; panel con el código codigo-local-123
 ```
 
@@ -69,6 +84,7 @@ Con `ANTHROPIC_API_KEY=sk-ant-… ADMIN_SETUP_CODE=codigo-local-123 node tests/s
 | Parte | Archivo |
 |---|---|
 | Planes, límites, presupuesto, códigos, personalidad y conversación con Claude | `netlify/lib/pilot.mjs` (`PLANS`, `PERSONA`, `CEBE`) |
+| Base de conocimiento (lectura de páginas y PDF, fragmentos, búsqueda) | `netlify/lib/knowledge.mjs` |
 | Rutas de la API | `netlify/functions/api.mjs` |
 | Acceso del panel, base de datos y utilidades | `netlify/lib/admin.mjs`, `db.mjs`, `util.mjs`, `log.mjs` |
 | La app | `public/index.html`, `public/assets/js/pilot.js`, `public/assets/css/pilot.css` |

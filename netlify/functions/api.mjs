@@ -3,6 +3,7 @@ import { setNamespaceFromHost, currentNamespace } from "../lib/db.mjs";
 import { adminExists, setupAdmin, login, logoutCookie, requireAdmin, changePassword } from "../lib/admin.mjs";
 import { status, activate, chat, adminOverview, savePilotConfig, createCode, revokeCode, keyConfigured } from "../lib/pilot.mjs";
 import { audit, recent } from "../lib/log.mjs";
+import * as kb from "../lib/knowledge.mjs";
 import { json, errorResponse, readJSON, fail, rateLimit, sameOrigin, str, now } from "../lib/util.mjs";
 
 export const config = { path: "/api/*" };
@@ -74,6 +75,69 @@ const routes = {
     await audit(admin.email, "pilot_code_created", r.record.id.slice(0, 12), { plan: r.record.plan, label: r.record.label });
     return json({ ok: true, code: r.code, record: r.record });
   },
+  // ---------------- Base de conocimiento ----------------
+  "GET /api/admin/knowledge": async req => { await requireAdmin(req); return json({ ok: true, ...(await kb.stats()) }); },
+  "GET /api/admin/knowledge/source": async req => { await requireAdmin(req); return json({ ok: true, ...(await kb.preview(str(new URL(req.url).searchParams.get("id"), 40))) }); },
+  // Hasta 5 enlaces por envío; cada uno se resuelve por separado (uno que falle no frena a los demás).
+  "POST /api/admin/knowledge/url": async req => {
+    if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
+    const admin = await requireAdmin(req);
+    const b = await readJSON(req);
+    const urls = [...new Set((Array.isArray(b.urls) ? b.urls : []).map(u => str(u, 2000)).filter(Boolean))];
+    if (!urls.length) fail(400, "no_urls", "Pegá al menos un enlace.");
+    if (urls.length > 5) fail(400, "too_many", "Máximo 5 enlaces por envío.");
+    const results = [];
+    for (const url of urls) { // de a uno: cada fuente reconstruye el índice
+      try { const r = await kb.addUrl(url); results.push({ url, ok: true, source: r }); await audit(admin.email, "knowledge_url", r.id, { url: r.url, chars: r.chars }); }
+      catch (e) { results.push({ url, ok: false, message: e.message || "Error" }); }
+    }
+    return json({ ok: true, results });
+  },
+  "POST /api/admin/knowledge/file": async req => {
+    if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
+    const admin = await requireAdmin(req);
+    if (Number(req.headers.get("content-length") || 0) > 5.2 * 1024 * 1024) fail(413, "too_large", "El archivo supera 5 MB.");
+    const form = await req.formData().catch(() => fail(400, "bad_form", "Formulario inválido."));
+    const file = form.get("file");
+    if (!file || typeof file === "string") fail(400, "no_file", "Elegí un archivo.");
+    const name = String(file.name || "archivo").normalize("NFC").replace(/[\\/:*?"<>|]+/g, "").slice(-120) || "archivo";
+    const r = await kb.addFile(name, await file.arrayBuffer());
+    await audit(admin.email, "knowledge_file", r.id, { name, chars: r.chars });
+    return json({ ok: true, source: r });
+  },
+  "POST /api/admin/knowledge/text": async req => {
+    if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
+    const admin = await requireAdmin(req);
+    const b = await readJSON(req, 512 * 1024);
+    const r = await kb.addText(b.title, b.text);
+    await audit(admin.email, "knowledge_text", r.id, { title: r.title, chars: r.chars });
+    return json({ ok: true, source: r });
+  },
+  "POST /api/admin/knowledge/refresh": async req => {
+    if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
+    const admin = await requireAdmin(req);
+    const r = await kb.refresh(str((await readJSON(req)).id, 40));
+    await audit(admin.email, "knowledge_refresh", r.id, { url: r.url, chars: r.chars });
+    return json({ ok: true, source: r });
+  },
+  "POST /api/admin/knowledge/active": async req => {
+    if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
+    const admin = await requireAdmin(req);
+    const b = await readJSON(req);
+    const r = await kb.setActive(str(b.id, 40), b.active === true);
+    await audit(admin.email, r.active ? "knowledge_on" : "knowledge_off", r.id);
+    return json({ ok: true, source: r });
+  },
+  "POST /api/admin/knowledge/delete": async req => {
+    if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
+    const admin = await requireAdmin(req);
+    const id = str((await readJSON(req)).id, 40);
+    await kb.remove(id);
+    await audit(admin.email, "knowledge_deleted", id);
+    return json({ ok: true });
+  },
+  "POST /api/admin/knowledge/search": async req => { await requireAdmin(req); return json({ ok: true, results: await kb.testSearch((await readJSON(req)).q) }); },
+
   "POST /api/admin/pilot/revoke": async req => {
     if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
     const admin = await requireAdmin(req);

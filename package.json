@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
-    "@netlify/blobs": "^10.7.13"
+    "@netlify/blobs": "^10.7.13",
+    "unpdf": "^1.9.1"
   }
 }

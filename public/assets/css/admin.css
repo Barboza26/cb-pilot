@@ -21,3 +21,16 @@
 .checkout{display:grid;gap:1.2rem;margin-top:1.5rem}
 .admin-body .checkout{max-width:560px;margin:3rem auto}
 .adm .checkout{margin:0 auto;width:100%}
+.kb-add{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
+.kb-add form,#kb-try{display:grid;gap:.8rem;align-content:start}
+.kb-add h2,#kb-try h2,#kb-prev h2{font-size:1.25rem}
+.kb-mode{font-size:1rem!important;line-height:1.3}
+.kb-row{display:flex;gap:.6rem;align-items:end}
+.kb-row .field{flex:1}
+.kb-acts{display:flex;flex-wrap:wrap;gap:.35rem}
+.kb-acts .btn-sm{--pad:.45rem .7rem;font-size:.78rem}
+.kb-hit{border:1px solid var(--line);border-radius:12px;padding:.7rem 1rem;margin-top:.5rem}
+.kb-hit summary{cursor:pointer}
+.kb-hit p{margin-top:.5rem;color:#cbd5e1;font-size:.88rem;white-space:pre-wrap}
+.kb-pre{white-space:pre-wrap;font:.82rem/1.6 var(--f-mono);color:#cbd5e1;max-height:420px;overflow:auto;background:rgba(7,13,28,.6);padding:1rem;border-radius:12px}
+@media (max-width:1000px){.kb-add{grid-template-columns:1fr}}

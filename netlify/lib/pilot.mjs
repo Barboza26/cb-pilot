@@ -4,6 +4,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { getJSON, update, listKeys } from "./db.mjs";
 import { fail, sha256, str, int, now, sign, verify, clientIp } from "./util.mjs";
+import { knowledgeFor } from "./knowledge.mjs";
 import crypto from "node:crypto";
 
 // Precios de Anthropic por millón de tokens (USD, octubre 2026). Solo sirven para llevar la cuenta del gasto.
@@ -259,7 +260,7 @@ const NDJSON = { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-C
 
 /**
  * Responde en streaming (una línea JSON por evento):
- *  {t:"start", plan} · {t:"d", v:"texto"} · {t:"reset"} · {t:"done", stop, cont, remaining} · {t:"error", code, message}
+ *  {t:"start", plan} · {t:"sources", items} · {t:"d", v:"texto"} · {t:"reset"} · {t:"done", stop, cont, remaining} · {t:"error", code, message}
  * Si se acerca el límite de tiempo de Netlify, corta y entrega "cont": un pase firmado para pedir la continuación.
  */
 export async function chat(req, ctx, body) {
@@ -274,6 +275,7 @@ export async function chat(req, ctx, body) {
   budgetGate(who.plan, cfg, await spend());
   const task = body.mode === "task";
   let messages = cleanMessages(body.messages, p);
+  const kb = await knowledgeFor(messages); // antes de agregar la continuación: la búsqueda usa las preguntas del usuario
   if (!counted) {
     const partial = typeof body.partial === "string" ? body.partial.slice(0, 200000) : ""; // sin recortar: el espacio final importa al unir
     if (partial) messages = [...messages, { role: "assistant", content: partial }, { role: "user", content: CONT_PROMPT }];
@@ -281,10 +283,11 @@ export async function chat(req, ctx, body) {
   const lim = limitsFor(who.plan, cfg);
   if (counted) await reserve(who.subject, lim);
 
-  const system = [
-    { type: "text", text: PERSONA(), cache_control: { type: "ephemeral" } },
-    ...(task ? [{ type: "text", text: TASK_MODE }] : [])
-  ];
+  // Lo estable va primero y queda en caché; la base de conocimiento chica también, la búsqueda por mensaje no.
+  const system = [{ type: "text", text: PERSONA() }];
+  if (kb?.cacheable) system.push({ type: "text", text: kb.text, cache_control: { type: "ephemeral" } });
+  else { system[0].cache_control = { type: "ephemeral" }; if (kb) system.push({ type: "text", text: kb.text }); }
+  if (task) system.push({ type: "text", text: TASK_MODE });
   const params = { model: p.model, max_tokens: p.maxTokens, system, messages, output_config: { effort: task ? p.taskEffort : p.effort } };
   if (p.thinking) params.thinking = p.thinking;
 
@@ -297,6 +300,7 @@ export async function chat(req, ctx, body) {
     async start(controller) {
       const send = o => { if (!gone) try { controller.enqueue(enc.encode(JSON.stringify(o) + "\n")); } catch { gone = true; } };
       send({ t: "start", plan: who.plan, label: p.label });
+      if (kb?.sources.length && counted) send({ t: "sources", items: kb.sources });
       const timer = setTimeout(() => { cut = true; stream?.abort(); }, DEADLINE());
       try {
         stream = p.fallback

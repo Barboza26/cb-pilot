@@ -41,7 +41,16 @@
     });
   }
 
-  const TABS = [["resumen", "Uso, planes y códigos"], ["auditoria", "Auditoría"], ["cuenta", "Cuenta"]];
+  const TABS = [["resumen", "Uso, planes y códigos"], ["conocimiento", "Conocimiento"], ["auditoria", "Auditoría"], ["cuenta", "Cuenta"]];
+  const TYPE = { url: "Enlace", file: "Archivo", text: "Texto" };
+  const size = n => (n >= 1e6 ? (n / 1e6).toFixed(1) + " M" : n >= 1e3 ? Math.round(n / 1e3) + " mil" : n) + " caracteres";
+  async function upload(file) {
+    const fd = new FormData(); fd.append("file", file);
+    let res; try { res = await fetch("/api/admin/knowledge/file", { method: "POST", body: fd, credentials: "same-origin" }); } catch { throw new Error("Sin conexión con el servidor."); }
+    const d = await res.json().catch(() => ({ message: `Error ${res.status}` }));
+    if (!res.ok || d.ok === false) throw Object.assign(new Error(d.message || "Error"), { status: res.status });
+    return d;
+  }
   function shell() {
     root.innerHTML = `<div class="adm"><h1>Administración</h1>
       <nav class="adm-nav" aria-label="Secciones">${TABS.map(([k, v]) => `<button type="button" data-tab="${k}" aria-pressed="${k === tab}">${v}</button>`).join("")}</nav>
@@ -101,6 +110,88 @@
       v.querySelectorAll("[data-revoke]").forEach(b => b.addEventListener("click", async () => {
         if (!confirm("¿Desactivar este código? El cliente pierde el acceso al plan.")) return;
         try { await api("/api/admin/pilot/revoke", { id: b.dataset.revoke }); VIEWS.resumen(v); } catch (err) { alert(err.message); }
+      }));
+    },
+    // Base de conocimiento: lo que CB Pilot consulta antes de responder.
+    async conocimiento(v) {
+      const d = await api("/api/admin/knowledge");
+      const mode = d.chars <= d.fullLimit ? "Completa en cada mensaje" : "Búsqueda de lo relevante";
+      v.innerHTML = `<p class="muted">Todo lo que agregues aquí, CB Pilot lo usa como referencia al responder y cita la fuente. Mientras la base sea chica (hasta ${size(d.fullLimit)}) se le da completa; cuando crece, busca solo los fragmentos relacionados con cada pregunta. Lo que contienen las fuentes se trata como información, nunca como instrucciones.</p>
+        <div class="kpis"><div class="card kpi"><span class="muted">Fuentes activas</span><b>${d.active}</b><small class="muted">de ${d.sources.length}</small></div>
+          <div class="card kpi"><span class="muted">Fragmentos</span><b>${d.chunks}</b></div>
+          <div class="card kpi"><span class="muted">Tamaño</span><b>${d.chars < 1000 ? d.chars : Math.round(d.chars / 1000) + " mil"}</b><small class="muted">caracteres · ${Math.max(d.chars ? 1 : 0, Math.round(d.chars / d.maxChars * 100))} % de la capacidad</small></div>
+          <div class="card kpi"><span class="muted">Modo</span><b class="kb-mode">${mode}</b></div></div>
+        <div class="kb-add">
+          <form class="card" id="kb-url"><h2>Enlaces</h2><p class="muted">Páginas web o PDF públicos, uno por línea (máximo 5 por vez). Se pueden volver a leer con «Actualizar».</p>
+            <div class="field"><label for="kb-urls">Enlaces</label><textarea id="kb-urls" rows="4" placeholder="https://cebestudiocr.com/&#10;https://ejemplo.com/preguntas-frecuentes"></textarea></div>
+            <div id="kb-url-msg"></div><button class="btn btn-primary">Aprender de estos enlaces</button></form>
+          <form class="card" id="kb-file"><h2>Archivos</h2><p class="muted">PDF, TXT, MD, CSV, JSON o HTML, hasta 5 MB cada uno. Los de Word: guardalos como PDF.</p>
+            <div class="field"><label for="kb-files">Archivos</label><input id="kb-files" type="file" multiple accept=".pdf,.txt,.md,.markdown,.csv,.json,.html,.htm"></div>
+            <div id="kb-file-msg"></div><button class="btn btn-primary">Subir y aprender</button></form>
+          <form class="card" id="kb-text"><h2>Texto</h2><p class="muted">Notas, preguntas frecuentes, precios, políticas… lo que quieras que sepa.</p>
+            <div class="field"><label for="kb-t">Título</label><input id="kb-t" maxlength="200" placeholder="Ej.: Horarios y contacto"></div>
+            <div class="field"><label for="kb-x">Texto</label><textarea id="kb-x" rows="5"></textarea></div>
+            <div id="kb-text-msg"></div><button class="btn btn-primary">Guardar</button></form>
+        </div>
+        <form class="card" id="kb-try"><h2>Probar</h2><p class="muted">Escribí una pregunta para ver qué fragmentos encontraría CB Pilot.</p>
+          <div class="kb-row"><div class="field"><label for="kb-q" class="sr-only">Pregunta</label><input id="kb-q" placeholder="¿Cuánto cuesta una demo exclusiva?"></div><button class="btn btn-ghost">Buscar</button></div><div id="kb-res"></div></form>
+        <h2>Fuentes</h2><div class="tbl"><table><tr><th>Título</th><th>Tipo</th><th>Tamaño</th><th>Actualizada</th><th>Estado</th><th></th></tr>
+          ${d.sources.map(x => `<tr data-id="${esc(x.id)}"><td>${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.title)}</a>` : esc(x.title)}${x.name ? `<br><small class="muted">${esc(x.name)}</small>` : ""}</td><td>${TYPE[x.type] || x.type}</td><td>${size(x.chars)}<br><small class="muted">${x.chunks} ${x.chunks === 1 ? "fragmento" : "fragmentos"}</small></td><td>${date(x.updatedAt)}</td><td>${x.active ? "Activa" : "Desactivada"}</td>
+            <td class="kb-acts"><button class="btn btn-ghost btn-sm" data-kb="view">Ver</button>${x.type === "url" ? '<button class="btn btn-ghost btn-sm" data-kb="refresh">Actualizar</button>' : ""}<button class="btn btn-ghost btn-sm" data-kb="toggle">${x.active ? "Desactivar" : "Activar"}</button><button class="btn btn-ghost btn-sm" data-kb="delete">Eliminar</button></td></tr>`).join("") || "<tr><td colspan=6>Todavía no hay fuentes. Agregá la primera arriba.</td></tr>"}</table></div>
+        <div id="kb-prev"></div>`;
+      const reload = async (box, html) => { await VIEWS.conocimiento(v); if (box && html) $(box).innerHTML = html; };
+      $("#kb-url").addEventListener("submit", async e => {
+        e.preventDefault();
+        const urls = $("#kb-urls").value.split("\n").map(s => s.trim()).filter(Boolean);
+        if (!urls.length) return; if (urls.length > 5) { $("#kb-url-msg").innerHTML = msg("Máximo 5 enlaces por vez."); return; }
+        const btn = e.target.querySelector("button"); btn.disabled = true; const lines = [];
+        for (const [i, url] of urls.entries()) { // de a uno, para mostrar el avance y no pasar el límite de tiempo
+          $("#kb-url-msg").innerHTML = `<p class="muted">Leyendo ${i + 1} de ${urls.length}: ${esc(url)}…</p>`;
+          try { const r = await api("/api/admin/knowledge/url", { urls: [url] }); const x = r.results[0]; lines.push(x.ok ? `✅ ${esc(x.source.title)} (${size(x.source.chars)})` : `❌ ${esc(url)}: ${esc(x.message)}`); }
+          catch (err) { lines.push(`❌ ${esc(url)}: ${esc(err.message)}`); }
+        }
+        await reload("#kb-url-msg", `<p class="form-msg${lines.every(l => l.startsWith("✅")) ? " ok" : ""}">${lines.join("<br>")}</p>`);
+      });
+      $("#kb-file").addEventListener("submit", async e => {
+        e.preventDefault();
+        const files = [...$("#kb-files").files]; if (!files.length) return;
+        const btn = e.target.querySelector("button"); btn.disabled = true; const lines = [];
+        for (const [i, f] of files.entries()) {
+          $("#kb-file-msg").innerHTML = `<p class="muted">Procesando ${i + 1} de ${files.length}: ${esc(f.name)}…</p>`;
+          if (f.size > 5 * 1024 * 1024) { lines.push(`❌ ${esc(f.name)}: supera 5 MB`); continue; }
+          try { const r = await upload(f); lines.push(`✅ ${esc(r.source.title)} (${size(r.source.chars)})`); }
+          catch (err) { if (err.status === 401) return loginView("Tu sesión terminó. Volvé a entrar."); lines.push(`❌ ${esc(f.name)}: ${esc(err.message)}`); }
+        }
+        await reload("#kb-file-msg", `<p class="form-msg${lines.every(l => l.startsWith("✅")) ? " ok" : ""}">${lines.join("<br>")}</p>`);
+      });
+      $("#kb-text").addEventListener("submit", async e => {
+        e.preventDefault();
+        try { const r = await api("/api/admin/knowledge/text", { title: $("#kb-t").value, text: $("#kb-x").value }); await reload("#kb-text-msg", msg(`Guardado: ${r.source.title}.`, true)); }
+        catch (err) { $("#kb-text-msg").innerHTML = msg(err.message); }
+      });
+      $("#kb-try").addEventListener("submit", async e => {
+        e.preventDefault();
+        const r = await api("/api/admin/knowledge/search", { q: $("#kb-q").value }).catch(err => ({ error: err }));
+        $("#kb-res").innerHTML = r.error ? msg(r.error.message) : r.results.length
+          ? r.results.map(x => `<details class="kb-hit"><summary><b>${esc(x.t)}</b> <small class="muted">· relevancia ${x.score}</small></summary><p>${esc(x.x)}</p></details>`).join("")
+          : `<p class="muted">No encontró nada relacionado. Probá con otras palabras o agregá una fuente sobre eso.</p>`;
+      });
+      v.querySelectorAll("[data-kb]").forEach(b => b.addEventListener("click", async () => {
+        const id = b.closest("[data-id]").dataset.id, act = b.dataset.kb;
+        if (act === "view") {
+          const r = await api(`/api/admin/knowledge/source?id=${encodeURIComponent(id)}`);
+          $("#kb-prev").innerHTML = `<div class="card"><h2>${esc(r.source.title)}</h2><p class="muted">Así lo leyó CB Pilot (primeros 4 000 caracteres):</p><pre class="kb-pre">${esc(r.text)}</pre></div>`;
+          return $("#kb-prev").scrollIntoView({ behavior: "smooth" });
+        }
+        if (act === "delete" && !confirm("¿Eliminar esta fuente? CB Pilot dejará de usarla.")) return;
+        const wasActive = b.textContent === "Desactivar";
+        b.disabled = true; b.textContent = "…";
+        try {
+          if (act === "refresh") await api("/api/admin/knowledge/refresh", { id });
+          if (act === "toggle") await api("/api/admin/knowledge/active", { id, active: !wasActive });
+          if (act === "delete") await api("/api/admin/knowledge/delete", { id });
+          await VIEWS.conocimiento(v);
+        } catch (err) { alert(err.message); b.disabled = false; }
       }));
     },
     async auditoria(v) {
