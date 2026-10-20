@@ -1,0 +1,86 @@
+/* =====================================================================
+   CB Pilot — estilos base (colores, tipografía, botones, campos, diálogos)
+   Paleta: #070D1C · #101D38 · #2563EB · #38BDF8 · #8B5CF6 · #F8FAFC · #94A3B8
+   ===================================================================== */
+@import url("../fonts/fonts-local.css");
+
+:root{
+  --bg:#070D1C; --bg-2:#101D38; --blue:#2563EB; --cyan:#38BDF8; --violet:#8B5CF6; --white:#F8FAFC; --gray:#94A3B8;
+  --line:rgba(56,189,248,.16); --line-strong:rgba(56,189,248,.42);
+  --glass:rgba(16,29,56,.58); --glass-2:rgba(16,29,56,.82);
+  --glow:0 0 0 1px rgba(56,189,248,.18),0 18px 60px -18px rgba(37,99,235,.55);
+  --f-title:'Syne',system-ui,sans-serif; --f-mono:'Space Mono',ui-monospace,monospace; --f-body:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --r:20px; --r-sm:12px; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+*{margin:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--white);font:400 1rem/1.7 var(--f-body);min-height:100vh;overflow-x:hidden;position:relative}
+body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background:radial-gradient(900px 600px at 8% -5%,rgba(37,99,235,.24),transparent 60%),radial-gradient(800px 560px at 100% 40%,rgba(139,92,246,.10),transparent 60%),var(--bg)}
+img,svg,canvas,video{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+::selection{background:var(--blue);color:#fff}
+:focus-visible{outline:3px solid var(--cyan);outline-offset:3px;border-radius:6px}
+h1,h2,h3{font-family:var(--f-title);line-height:1.08;letter-spacing:-.02em;font-weight:700}
+.grad{background:linear-gradient(100deg,var(--blue),var(--cyan) 60%,var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+.eyebrow{font:700 .74rem/1 var(--f-mono);letter-spacing:.2em;text-transform:uppercase;color:var(--cyan);display:inline-flex;align-items:center;gap:.7rem}
+.eyebrow::before{content:"";width:28px;height:1px;background:linear-gradient(90deg,var(--cyan),transparent)}
+.lead{color:var(--gray);font-size:1.05rem;max-width:62ch}
+.muted{color:var(--gray);font-size:.85rem}
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.skip{position:fixed;left:1rem;top:-4rem;z-index:300;background:var(--blue);color:#fff;padding:.7rem 1rem;border-radius:10px;transition:top .2s}
+.skip:focus{top:1rem}
+
+/* Marca */
+.logo{display:inline-flex;align-items:center;gap:.6rem;font:800 1.08rem/1 var(--f-title);letter-spacing:-.01em}
+.logo-orb{width:32px;height:32px;border-radius:50%;flex:none;position:relative;background:conic-gradient(from 120deg,#2563EB,#38BDF8,#8B5CF6,#2563EB);box-shadow:0 0 18px rgba(56,189,248,.4);display:grid;place-items:center;font:800 .62rem/1 var(--f-title);color:#fff}
+.logo-orb::after{content:"";position:absolute;inset:3px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#1e3a8a,var(--bg) 72%)}
+.logo-orb span{position:relative;z-index:1}
+
+/* Botones */
+.btn{--pad:.95rem 1.5rem;display:inline-flex;align-items:center;justify-content:center;gap:.6rem;padding:var(--pad);border-radius:999px;font:600 .95rem/1 var(--f-body);border:1px solid transparent;transition:transform .2s,box-shadow .25s,border-color .25s,background .25s;white-space:nowrap}
+.btn-primary{background:var(--blue);color:#fff;box-shadow:0 10px 30px -10px rgba(37,99,235,.9),inset 0 1px 0 rgba(255,255,255,.25)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 14px 38px -8px rgba(56,189,248,.65),0 0 0 1px var(--cyan),inset 0 1px 0 rgba(255,255,255,.3)}
+.btn-ghost{border-color:var(--line-strong);background:rgba(16,29,56,.4);color:#fff;backdrop-filter:blur(8px)}
+.btn-ghost:hover{transform:translateY(-2px);border-color:var(--cyan);box-shadow:0 0 28px -6px rgba(56,189,248,.5)}
+.btn-sm{--pad:.7rem 1.1rem;font-size:.85rem}
+.btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.lang{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--glass)}
+.lang button{padding:.32rem .6rem;border-radius:999px;font:700 .7rem/1 var(--f-mono);letter-spacing:.08em;color:#cbd5e1;transition:.2s}
+.lang button[aria-pressed="true"]{background:var(--blue);color:#fff}
+
+/* Tarjetas y campos */
+.card{position:relative;border-radius:var(--r);padding:1.7rem;background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.field{display:grid;gap:.4rem;min-width:0;align-content:start}
+.field.full{grid-column:1/-1}
+.field label{font:600 .82rem var(--f-body);color:#e2e8f0}
+.field input,.field select,.field textarea{width:100%;padding:.8rem 1rem;border-radius:12px;border:1px solid rgba(148,163,184,.38);background:rgba(7,13,28,.7);transition:border-color .2s,box-shadow .2s}
+.field input::placeholder,.field textarea::placeholder{color:#7c8aa0}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(56,189,248,.22)}
+.field select option{background:var(--bg-2)}
+.check{display:flex;gap:.6rem;align-items:flex-start;font-size:.9rem}
+input[type=radio],input[type=checkbox]{accent-color:var(--blue);width:18px;height:18px;flex:none}
+.form-msg{padding:.8rem 1rem;border-radius:12px;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.4)}
+.form-msg.ok{background:rgba(74,222,128,.1);border-color:rgba(74,222,128,.4)}
+
+/* Diálogos */
+.pdialog{border:1px solid var(--line-strong);border-radius:var(--r);background:var(--bg-2);color:var(--white);padding:0;width:min(760px,94vw);max-height:90vh;margin:auto}
+.pdialog::backdrop{background:rgba(3,6,14,.75);backdrop-filter:blur(4px)}
+.pd-in{padding:clamp(1.3rem,4vw,2.4rem);display:grid;gap:1rem}
+.pd-in h2{font-size:clamp(1.5rem,3vw,2.1rem)}
+
+/* Páginas de texto (privacidad, términos, 404) */
+.page{width:min(820px,100% - 2rem);margin:0 auto;padding:clamp(2rem,6vw,4rem) 0 4rem}
+.page-top{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem clamp(1rem,3vw,2rem);border-bottom:1px solid var(--line)}
+.page h1{font-size:clamp(2rem,5vw,3rem);margin:1rem 0}
+.page h2{font-size:1.3rem;margin:2rem 0 .6rem}
+.page p,.page li{color:#cbd5e1}
+.page ul{padding-left:1.3rem;display:grid;gap:.4rem}
+.page a{color:var(--cyan);text-decoration:underline;text-underline-offset:3px}
+
+@media (max-width:760px){.fields{grid-template-columns:1fr}}
+.page-back{margin-top:2.5rem}

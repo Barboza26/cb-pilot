@@ -1,0 +1,7 @@
+# CB Pilot — configuración de Netlify (despliegue desde GitHub).
+# Se publica solo public/ (la web); la API vive en netlify/functions/.
+[build]
+  publish = "public"
+
+[functions]
+  node_bundler = "esbuild"

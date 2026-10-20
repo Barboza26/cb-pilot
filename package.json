@@ -1,0 +1,17 @@
+{
+  "name": "cb-pilot",
+  "private": true,
+  "type": "module",
+  "description": "CB Pilot: asistente de inteligencia artificial (Netlify Functions + Blobs + Claude)",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "dev": "PILOT_FAKE=1 ADMIN_SETUP_CODE=codigo-local-123 node tests/servidor-local.mjs 8899"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
+    "@netlify/blobs": "^10.7.13"
+  }
+}

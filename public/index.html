@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CB Pilot · Tu asistente de inteligencia artificial</title>
+<meta name="description" content="CB Pilot es un asistente de inteligencia artificial: chatea, escribe, programa, diseña páginas con vista previa y resuelve varias tareas al mismo tiempo.">
+<meta name="theme-color" content="#070D1C">
+<meta property="og:title" content="CB Pilot · Tu asistente de inteligencia artificial">
+<meta property="og:description" content="Chatea, escribe, programa, diseña y resuelve varias tareas al mismo tiempo.">
+<meta property="og:type" content="website">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="preload" href="/assets/fonts/syne.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/pilot.css">
+<script src="/assets/js/core.js" defer></script>
+<script src="/assets/js/pilot.js" defer></script>
+</head>
+<body class="pilot-body">
+<a class="skip" href="#pl-input" data-i18n="skip">Saltar al chat</a>
+<main id="main">
+<div class="pilot" id="pilot">
+ <aside class="pl-side" id="pl-side" aria-label="Conversaciones">
+  <div class="pl-brand"><a class="logo" href="/" aria-label="CB Pilot, inicio"><span class="logo-orb" aria-hidden="true"><span>CB</span></span>CB Pilot</a></div>
+  <div class="pl-side-top">
+   <button type="button" class="pl-new" id="pl-new"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span data-i18n="pl.new">Nuevo chat</span></button>
+   <button type="button" class="pl-icon pl-only-m" id="pl-side-close" aria-label="Cerrar panel" data-i18n-attr="aria-label:pl.closePanel"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="pl-switch" role="group" aria-label="Modo">
+   <button type="button" data-view="chat" aria-pressed="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span data-i18n="pl.chats">Chats</span></button>
+   <button type="button" data-view="tasks" aria-pressed="false"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span data-i18n="pl.tasks">Tareas</span></button>
+  </div>
+  <label class="pl-search"><span class="sr-only" data-i18n="pl.search">Buscar chats</span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="pl-search" type="search" placeholder="Buscar chats" data-i18n-attr="placeholder:pl.search" autocomplete="off"></label>
+  <nav class="pl-list" id="pl-list" aria-label="Historial"></nav>
+  <div class="pl-plan" id="pl-plan" aria-live="polite"></div>
+  <p class="pl-legal"><a href="/privacidad/" data-i18n="pl.privacy">Privacidad</a> · <a href="/terminos/" data-i18n="pl.terms">Términos</a></p>
+ </aside>
+ <div class="pl-scrim" id="pl-scrim" hidden></div>
+ <section class="pl-main" aria-label="CB Pilot">
+  <div class="pl-top">
+   <button type="button" class="pl-icon pl-only-m" id="pl-side-open" aria-label="Abrir historial" data-i18n-attr="aria-label:pl.openPanel"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
+   <h1 class="pl-title" id="pl-title">CB Pilot</h1>
+   <span class="pl-model" id="pl-model">Pilot Flash</span>
+   <div class="lang" role="group" aria-label="Idioma"><button type="button" data-lang="es" aria-pressed="true" lang="es">ES</button><button type="button" data-lang="en" aria-pressed="false" lang="en">EN</button></div>
+   <button type="button" class="btn btn-ghost btn-sm pl-plans-btn" id="pl-plans-open"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l3 6 6 .9-4.5 4.3 1 6.3L12 16.8 6.5 19.5l1-6.3L3 8.9 9 8z"/></svg><span data-i18n="pl.plans">Planes</span></button>
+  </div>
+  <div class="pl-view" id="pl-chat">
+   <div class="pl-scroll" id="pl-scroll"><div class="pl-thread" id="pl-thread" aria-live="off"></div></div>
+   <form class="pl-composer" id="pl-form">
+    <label class="sr-only" for="pl-input" data-i18n="pl.ask">Tu mensaje para CB Pilot</label>
+    <textarea id="pl-input" rows="1" placeholder="Preguntale lo que quieras a CB Pilot…" data-i18n-attr="placeholder:pl.placeholder" enterkeyhint="send"></textarea>
+    <button type="submit" class="pl-send" id="pl-send" aria-label="Enviar" data-i18n-attr="aria-label:pl.send"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+   </form>
+   <p class="pl-note" data-i18n="pl.note">CB Pilot puede equivocarse: verificá lo importante. No compartas contraseñas ni datos sensibles.</p>
+  </div>
+  <div class="pl-view pl-tasks" id="pl-tasks" hidden>
+   <div class="pl-tasks-in">
+    <div class="pl-tasks-head">
+     <span class="eyebrow" data-i18n="pl.tasks.eyebrow">Modo Tareas</span>
+     <h2 data-i18n="pl.tasks.title">Varias tareas, <span class="grad">al mismo tiempo</span>.</h2>
+     <p class="lead" data-i18n="pl.tasks.lead">Escribí una tarea por línea y CB Pilot las resuelve en paralelo. Cada tarjeta se puede copiar o abrir como chat para seguir conversando.</p>
+    </div>
+    <form class="pl-task-form card" id="pl-task-form">
+     <label for="pl-task-input" class="sr-only" data-i18n="pl.tasks.input">Tareas, una por línea</label>
+     <textarea id="pl-task-input" rows="4" placeholder="Ej.: Escribí 5 ideas de posts para mi panadería&#10;Redactá la sección «Sobre nosotros» de mi web&#10;Armá un plan de contenido de 2 semanas" data-i18n-attr="placeholder:pl.tasks.ph"></textarea>
+     <div class="pl-packs" id="pl-packs" aria-label="Paquetes de tareas"></div>
+     <div class="pl-task-actions"><span class="muted" id="pl-task-hint"></span><button class="btn btn-primary btn-sm" type="submit" id="pl-task-go" data-i18n="pl.tasks.go">Lanzar tareas</button></div>
+    </form>
+    <div class="pl-task-bar"><h3 data-i18n="pl.tasks.board">Tablero</h3><button type="button" class="pl-link" id="pl-task-clear" data-i18n="pl.tasks.clear">Limpiar terminadas</button></div>
+    <div class="pl-board" id="pl-board" aria-live="polite"></div>
+   </div>
+  </div>
+ </section>
+ <aside class="pl-canvas" id="pl-canvas" aria-label="Vista previa" hidden>
+  <div class="pl-canvas-top">
+   <strong data-i18n="pl.canvas">Vista previa</strong>
+   <div class="pl-seg" role="group" aria-label="Tamaño"><button type="button" data-size="desktop" aria-pressed="true" data-i18n="pl.desktop">Escritorio</button><button type="button" data-size="mobile" aria-pressed="false" data-i18n="pl.mobile">Celular</button></div>
+   <button type="button" class="pl-icon" id="pl-canvas-dl" aria-label="Descargar HTML" data-i18n-attr="aria-label:pl.download"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg></button>
+   <button type="button" class="pl-icon" id="pl-canvas-close" aria-label="Cerrar vista previa" data-i18n-attr="aria-label:pl.closePreview"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="pl-frame-wrap"><iframe id="pl-frame" title="Vista previa del diseño" sandbox="" referrerpolicy="no-referrer"></iframe></div>
+ </aside>
+</div>
+<dialog class="pdialog pl-dialog" id="pl-plans" aria-labelledby="pl-plans-title"><div class="pd-in" id="pl-plans-body"></div></dialog>
+<p class="sr-only" id="pl-live" aria-live="polite"></p>
+</main>
+</body>
+</html>
