@@ -63,6 +63,16 @@ Cómo la usa: mientras la base sea chica (hasta ~24 000 caracteres) se le da com
 
 **Costo:** cada mensaje lleva algo más de texto. Con el plan gratis (Haiku) sigue siendo una fracción de centavo; en Pro y Max puede sumar alrededor de US$0,01 por mensaje cuando la base es grande.
 
+## Verlo en tu computadora (Windows, con doble clic)
+
+1. Instalá **Node.js** (versión LTS) desde https://nodejs.org/es/download, una sola vez.
+2. Descargá este proyecto: en GitHub → botón verde **Code → Download ZIP**, y descomprimilo en el Escritorio.
+3. Doble clic en **`ABRIR-CB-PILOT.bat`**. Se abre el navegador con CB Pilot.
+   - Si tocás ENTER sin escribir nada, responde con textos **simulados** (no gasta).
+   - Si pegás tu clave de Anthropic, usa la **IA real**.
+   - Panel: http://localhost:8899/admin/ con el código `codigo-local-123`.
+4. Para cerrarlo, cerrá la ventana negra. Lo que pruebes ahí se borra al cerrar.
+
 ## Probar en tu computadora (sin gastar)
 
 ```bash
