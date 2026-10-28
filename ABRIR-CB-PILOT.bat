@@ -28,6 +28,7 @@ set "ANTHROPIC_API_KEY="
 set /p "ANTHROPIC_API_KEY=  Clave (opcional): "
 if "%ANTHROPIC_API_KEY%"=="" ( set "PILOT_FAKE=1" & echo  Modo simulado: no gasta nada. ) else ( set "PILOT_FAKE=" & echo  Modo IA real: cada mensaje gasta un poco de tu saldo. )
 set "ADMIN_SETUP_CODE=codigo-local-123"
+set "PILOT_DEADLINE_MS=600000"
 echo.
 echo  Chat:   http://localhost:8899
 echo  Panel:  http://localhost:8899/admin/   (codigo de configuracion: codigo-local-123^)

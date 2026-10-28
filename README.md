@@ -10,12 +10,14 @@ Funciona con modelos Claude de Anthropic. Cuando alguien necesita una página we
 
 | Función | Detalle |
 |---|---|
-| Chat en vivo | La respuesta aparece mientras se escribe; detener, copiar, regenerar, editar, continuar, 👍/👎. |
+| Chat en vivo | La respuesta aparece mientras se escribe; detener, copiar, regenerar, editar, 👍/👎. Las respuestas largas (como una página completa) salen enteras: si son muy largas, siguen solas en varios tramos sin tocar nada. |
+| Caja de texto completa | Adjuntar fotos, PDF y archivos de texto o código (también arrastrando o pegando), dictado por voz (Chrome y Edge; Brave lo bloquea), modo **Rápido / Detallado** y **asistentes**: General, Diseñador web, Programador, Marketing y redes, Profe y Redactor. |
+| Apariencia | Tema oscuro, claro o «igual que el sistema», y 5 colores de acento (azul, morado, verde, naranja, rosa). Se recuerda en cada dispositivo. |
 | Varios chats a la vez | Un chat sigue respondiendo mientras escribís en otro (punto azul en el historial). |
 | Modo Tareas | Varias tareas (una por línea) resueltas en paralelo, con paquetes listos. Cada tarjeta se copia o se abre como chat. |
 | Vista previa | Las landings y diseños HTML se ven en vivo (escritorio o celular) y se descargan. Aislada, sin scripts. |
 | Historial | Buscar, fijar, renombrar y eliminar. Se guarda **solo en el dispositivo** del usuario. |
-| Planes | Gratis (Claude Haiku 5.5), Pro (Claude Sonnet 5.5) y Max (Claude Opus 5.5), con códigos de acceso que crea el dueño. |
+| Planes | Gratis (Claude Haiku 5.5), Pro (Claude Sonnet 5.5) y Max (Claude Opus 5.5), con códigos de acceso que crea el dueño. El usuario ve su uso como **porcentaje** del día (y del mes en los planes pagos), no como cantidad de mensajes. |
 | **Base de conocimiento** | Desde el panel le das enlaces, archivos (PDF, TXT, MD, CSV, JSON, HTML) o textos. CB Pilot los consulta antes de responder y muestra «Fuentes consultadas» bajo la respuesta. Cuanto más agregás, más sabe. |
 | Panel `/admin/` | Gasto del mes contra el presupuesto, mensajes por plan y por día, pausa inmediata, precios, códigos, base de conocimiento y auditoría. |
 | Presupuesto | Tope mensual (US$25 por defecto); el plan gratis se pausa al 70 % para reservar el resto a quienes pagan. |

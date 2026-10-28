@@ -15,7 +15,8 @@
     "pl.tasks.input": "Tasks, one per line", "pl.tasks.ph": "E.g.: Write 5 post ideas for my bakery\nWrite the “About us” section of my website\nBuild a 2-week content plan",
     "pl.tasks.go": "Launch tasks", "pl.tasks.board": "Board", "pl.tasks.clear": "Clear finished",
     "pl.canvas": "Preview", "pl.desktop": "Desktop", "pl.mobile": "Mobile", "pl.download": "Download HTML", "pl.closePreview": "Close preview",
-    "pl.privacy": "Privacy", "pl.terms": "Terms", "pg.back": "Back to CB Pilot"
+    "pl.privacy": "Privacy", "pl.terms": "Terms", "pg.back": "Back to CB Pilot",
+    "pl.attach": "Attach a file or photo", "pl.mic": "Voice dictation", "pl.drop": "Drop your files or photos here", "pl.look": "Appearance"
   };
 
   let lang = "es";

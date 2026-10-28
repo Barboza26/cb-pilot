@@ -1,5 +1,5 @@
 /* CB Pilot — panel de administración */
-.adm-top{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:1rem;padding:.8rem clamp(1rem,3vw,2rem);background:rgba(7,13,28,.9);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.adm-top{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:1rem;padding:.8rem clamp(1rem,3vw,2rem);background:rgba(var(--bg-rgb),.9);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
 .adm-top .logo small{font:400 .62rem/1 var(--f-mono);letter-spacing:.16em;text-transform:uppercase;color:var(--cyan)}
 .adm-badge{font:700 .66rem/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;padding:.35rem .6rem;border-radius:999px;border:1px solid rgba(250,204,21,.45);color:#fde68a}
 .adm-site{margin-left:auto}
@@ -7,8 +7,8 @@
 .adm{display:grid;gap:1.4rem}
 .adm h1{font-size:clamp(1.6rem,3vw,2.2rem)}
 .adm h2{margin-top:.6rem}
-.adm-nav{position:sticky;top:72px;z-index:20;display:flex;flex-wrap:wrap;gap:.5rem;padding:.6rem;border-radius:16px;background:rgba(16,29,56,.75);backdrop-filter:blur(10px);border:1px solid var(--line)}
-.adm-nav button{padding:.55rem 1rem;border-radius:999px;border:1px solid var(--line);background:var(--glass);color:#cbd5e1}
+.adm-nav{position:sticky;top:72px;z-index:20;display:flex;flex-wrap:wrap;gap:.5rem;padding:.6rem;border-radius:16px;background:rgba(var(--bg2-rgb),.75);backdrop-filter:blur(10px);border:1px solid var(--line)}
+.adm-nav button{padding:.55rem 1rem;border-radius:999px;border:1px solid var(--line);background:var(--glass);color:var(--text-2)}
 .adm-nav button[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:#fff}
 .adm table{width:100%;border-collapse:collapse;font-size:.88rem}
 .adm th,.adm td{text-align:left;padding:.6rem .5rem;border-bottom:1px solid var(--line);vertical-align:top}
@@ -31,6 +31,6 @@
 .kb-acts .btn-sm{--pad:.45rem .7rem;font-size:.78rem}
 .kb-hit{border:1px solid var(--line);border-radius:12px;padding:.7rem 1rem;margin-top:.5rem}
 .kb-hit summary{cursor:pointer}
-.kb-hit p{margin-top:.5rem;color:#cbd5e1;font-size:.88rem;white-space:pre-wrap}
-.kb-pre{white-space:pre-wrap;font:.82rem/1.6 var(--f-mono);color:#cbd5e1;max-height:420px;overflow:auto;background:rgba(7,13,28,.6);padding:1rem;border-radius:12px}
+.kb-hit p{margin-top:.5rem;color:var(--text-2);font-size:.88rem;white-space:pre-wrap}
+.kb-pre{white-space:pre-wrap;font:.82rem/1.6 var(--f-mono);color:var(--text-2);max-height:420px;overflow:auto;background:rgba(var(--bg-rgb),.6);padding:1rem;border-radius:12px}
 @media (max-width:1000px){.kb-add{grid-template-columns:1fr}}

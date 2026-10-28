@@ -45,7 +45,7 @@ console.log(saludo("Carlos"));
 
 > Configurá \`ANTHROPIC_API_KEY\` en Netlify para respuestas reales.`;
 
-export function fakeClient({ delay = 8, reply } = {}) {
+export function fakeClient({ delay = 8, reply, stop = "end_turn" } = {}) {
   const calls = [];
   const stream = params => {
     calls.push(params);
@@ -61,7 +61,7 @@ export function fakeClient({ delay = 8, reply } = {}) {
         yield { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: chunk } };
       }
       yield { type: "content_block_stop", index: 0 };
-      yield { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: Math.ceil(text.length / 4) } };
+      yield { type: "message_delta", delta: { stop_reason: typeof stop === "function" ? stop(params) : stop }, usage: { output_tokens: Math.ceil(text.length / 4) } };
     }
     const it = events();
     return { abort() { aborted = true; }, [Symbol.asyncIterator]() { return it; } };

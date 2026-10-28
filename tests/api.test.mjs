@@ -74,7 +74,7 @@ test("valida el origen, el último mensaje y el largo", async () => {
   assert.equal((await call("POST", "/api/pilot/chat", user("hola"), { origin: false })).status, 403);
   assert.equal((await call("POST", "/api/pilot/chat", { messages: [{ role: "user", content: "a" }, { role: "assistant", content: "b" }] })).data.error, "bad_messages");
   assert.equal((await call("POST", "/api/pilot/chat", { messages: [] })).data.error, "bad_messages");
-  assert.equal((await call("POST", "/api/pilot/chat", user("x".repeat(9000)))).data.error, "too_long");
+  assert.equal((await call("POST", "/api/pilot/chat", user("x".repeat(13000)))).data.error, "too_long");
 });
 
 test("el modo tarea agrega sus instrucciones sin romper el prefijo en caché", async () => {
@@ -163,4 +163,38 @@ test("lleva la cuenta del gasto y pausa el plan gratis al llegar al tope", async
   assert.equal(cfg.data.error, "bad_budget");
   assert.equal((await call("POST", "/api/admin/pilot/config", { config: { ...DEFAULT_CONFIG, budgetUsd: 100 } }, { auth: true })).status, 200);
   assert.equal((await call("POST", "/api/pilot/chat", user("hola"), { ip: "10.1.0.6" })).status, 200);
+});
+
+test("asistentes, modo detallado y archivos adjuntos", async () => {
+  setPilotClient(() => fake);
+  await call("POST", "/api/pilot/chat", { ...user("Haceme una landing"), assistant: "web", style: "detallado" }, { ip: "10.1.0.20" });
+  let p = fake.calls.at(-1);
+  assert.ok(p.system.some(b => /Diseñador web/.test(b.text)));
+  assert.ok(p.system.some(b => /Modo detallado/.test(b.text)));
+  assert.equal(p.output_config.effort, "medium");
+  await call("POST", "/api/pilot/chat", { ...user("hola"), assistant: "inventado" }, { ip: "10.1.0.21" });
+  p = fake.calls.at(-1);
+  assert.ok(p.system.some(b => /Modo rápido/.test(b.text)));
+  assert.ok(!p.system.some(b => /# Asistente/.test(b.text)), "un asistente desconocido se ignora");
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString("base64");
+  const r = await call("POST", "/api/pilot/chat", { ...user("¿Qué ves?"), attachments: [{ kind: "image", name: "foto.jpg", media: "image/jpeg", data: png }, { kind: "text", name: "notas.md", text: "Lista de precios" }, { kind: "pdf", name: "doc.pdf", data: png }] }, { ip: "10.1.0.22" });
+  assert.equal(r.status, 200);
+  const last = fake.calls.at(-1).messages.at(-1).content;
+  assert.deepEqual(last.map(b => b.type), ["image", "text", "document", "text"]);
+  assert.match(last[1].text, /<archivo nombre="notas.md">/);
+  assert.equal(last.at(-1).text, "¿Qué ves?");
+  assert.equal((await call("POST", "/api/pilot/chat", { ...user("x"), attachments: [{ kind: "image", name: "a.svg", media: "image/svg+xml", data: png }] }, { ip: "10.1.0.23" })).data.error, "bad_file");
+  assert.equal((await call("POST", "/api/pilot/chat", { ...user("x"), attachments: [{ kind: "exe", name: "a.exe" }] }, { ip: "10.1.0.23" })).data.error, "bad_file");
+  assert.equal((await call("POST", "/api/pilot/chat", { ...user("x"), attachments: Array(6).fill({ kind: "text", name: "a", text: "b" }) }, { ip: "10.1.0.23" })).data.error, "too_many_files");
+});
+
+test("si la respuesta llega al largo máximo, sigue sola sin contar otro mensaje", async () => {
+  const long = fakeClient({ delay: 0, reply: "parte ", stop: "max_tokens" });
+  setPilotClient(() => long);
+  const r = await call("POST", "/api/pilot/chat", user("Una página enorme"), { ip: "10.1.0.30" });
+  assert.equal(r.done.stop, "continue");
+  assert.ok(r.done.cont);
+  const c = await call("POST", "/api/pilot/chat", { ...user("Una página enorme"), partial: r.text, cont: r.done.cont }, { ip: "10.1.0.30" });
+  assert.equal(c.done.remaining, r.done.remaining, "la continuación no descuenta uso");
+  setPilotClient(() => fake);
 });

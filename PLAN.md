@@ -33,6 +33,17 @@ Calculado con unos ₡500 por dólar; revisá el tipo de cambio. Mientras no car
 
 ### Ya hecho
 - ✅ **Base de conocimiento** (enlaces, archivos y textos que la IA consulta y cita).
+- ✅ **Adjuntar fotos, PDF y archivos**, dictado por voz, modo Rápido/Detallado y asistentes especializados.
+- ✅ **Modo claro y 5 colores**, uso en porcentaje y respuestas largas completas.
+
+### Límites actuales por plan (editables en `netlify/lib/pilot.mjs` → `PLANS`)
+| Plan | Mensajes por día | Por mes | Costo máximo aprox. para vos si alguien usa el 100 % del mes |
+|---|---|---|---|
+| Gratis | 40 (cambiable en el panel) | — | ≈ US$1 por persona |
+| Pro | 100 | 1 200 | ≈ US$25–35 |
+| Max | 150 | 800 | ≈ US$35–50 |
+
+Casi nadie usa el 100 %, pero si vendés Pro y Max conviene que el precio cubra ese peor caso (por ejemplo, Pro ≈ ₡14 900 y Max ≈ ₡29 900 al mes), o bajar los límites mensuales.
 
 ### Para la base de conocimiento
 | Idea | Viabilidad | Nota |

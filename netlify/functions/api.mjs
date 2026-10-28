@@ -28,7 +28,7 @@ const routes = {
   "POST /api/pilot/chat": async (req, ctx) => {
     if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
     await rateLimit(req, ctx, "pilot-chat", 40, 60);
-    return chat(req, ctx, await readJSON(req, 512 * 1024));
+    return chat(req, ctx, await readJSON(req, 6 * 1024 * 1024)); // incluye fotos y archivos adjuntos
   },
 
   // ---------------- Administración ----------------

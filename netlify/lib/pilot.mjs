@@ -14,19 +14,20 @@ const PRICES = {
   "claude-opus-5-5": { in: 4, out: 20, cacheRead: 0.20, cacheWrite: 5 }
 };
 
-// Planes. "perDay"/"perMonth" = mensajes; "parallel" = tareas simultáneas; "chars" = memoria de la conversación.
+// Planes. "perDay"/"perMonth" = mensajes (la interfaz los muestra como % de uso); "parallel" = tareas simultáneas;
+// "chars" = memoria de la conversación; "maxTokens" = largo de cada tramo (una respuesta larga sigue sola en varios tramos).
 // thinking: Haiku y Sonnet responden sin razonamiento extendido (más rápido); Opus no permite apagarlo y usa esfuerzo bajo.
 export const PLANS = {
-  gratis: { name: "Gratis", label: "Pilot Flash", model: "claude-haiku-5-5", perDay: 20, perMonth: null, parallel: 2, maxTokens: 2500, chars: 24000, msgChars: 8000, thinking: { type: "disabled" }, effort: "low", taskEffort: "medium", fallback: false },
-  pro: { name: "Pro", label: "Pilot Pro", model: "claude-sonnet-5-5", perDay: 60, perMonth: 500, parallel: 4, maxTokens: 6000, chars: 80000, msgChars: 30000, thinking: { type: "between_tools" }, effort: "low", taskEffort: "medium", fallback: true },
-  max: { name: "Max", label: "Pilot Max", model: "claude-opus-5-5", perDay: 80, perMonth: 300, parallel: 6, maxTokens: 8000, chars: 120000, msgChars: 40000, thinking: null, effort: "low", taskEffort: "medium", fallback: true }
+  gratis: { name: "Gratis", label: "Pilot Flash", model: "claude-haiku-5-5", perDay: 40, perMonth: null, parallel: 2, maxTokens: 8000, chars: 40000, msgChars: 12000, thinking: { type: "disabled" }, effort: "low", detailEffort: "medium", taskEffort: "medium", fallback: false },
+  pro: { name: "Pro", label: "Pilot Pro", model: "claude-sonnet-5-5", perDay: 100, perMonth: 1200, parallel: 4, maxTokens: 16000, chars: 120000, msgChars: 40000, thinking: { type: "between_tools" }, effort: "low", detailEffort: "medium", taskEffort: "medium", fallback: true },
+  max: { name: "Max", label: "Pilot Max", model: "claude-opus-5-5", perDay: 150, perMonth: 800, parallel: 6, maxTokens: 32000, chars: 200000, msgChars: 60000, thinking: null, effort: "low", detailEffort: "high", taskEffort: "medium", fallback: true }
 };
 
 export const DEFAULT_CONFIG = {
   enabled: true,
   budgetUsd: Number(process.env.PILOT_BUDGET_USD) || 25, // tope de gasto mensual en la API de Claude
   freeShare: 0.7,          // el plan gratis se pausa al llegar a este % del presupuesto (el resto queda para los planes pagos)
-  freePerDay: 20,
+  freePerDay: 40,
   prices: { pro: null, max: null } // colones por mes; null = "consultar"
 };
 
@@ -146,8 +147,8 @@ function budgetGate(plan, cfg, s) {
 }
 async function reserve(subject, lim) {
   const fn = (max, msg) => cur => { const n = (cur?.n || 0) + 1; if (max !== null && n > max) fail(429, "quota", msg); return { n }; };
-  await update("pilot", `uso/${DAY()}/${subject}`, fn(lim.perDay, `Llegaste a tus ${lim.perDay} mensajes de hoy. Mañana se renuevan, o pasate a un plan con más mensajes.`), { init: null });
-  try { await update("pilot", `mes/${MONTH()}/${subject}`, fn(lim.perMonth, `Usaste los ${lim.perMonth} mensajes de tu plan este mes.`), { init: null }); }
+  await update("pilot", `uso/${DAY()}/${subject}`, fn(lim.perDay, "Usaste el 100 % de tu uso de hoy. Se renueva a medianoche (hora de Costa Rica), o pasate a un plan con más uso."), { init: null });
+  try { await update("pilot", `mes/${MONTH()}/${subject}`, fn(lim.perMonth, "Usaste el 100 % del uso de tu plan este mes. Se renueva el mes que viene."), { init: null }); }
   catch (e) { await refund(subject, true); throw e; }
 }
 async function refund(subject, dayOnly = false) {
@@ -218,6 +219,7 @@ const PERSONA = () => `Sos CB Pilot, un asistente de inteligencia artificial ind
 - Usá Markdown: títulos cortos, listas, tablas y negritas cuando ayuden. Párrafos breves, fáciles de leer en celular.
 - El código siempre en bloques con el lenguaje indicado (\`\`\`js, \`\`\`python, etc.).
 - Cuando el usuario pida una página web, landing, correo HTML o un diseño que se pueda ver, entregá UN solo bloque \`\`\`html con un documento completo y autocontenido: CSS dentro de <style>, sin JavaScript (la vista previa no lo ejecuta), diseño moderno, adaptado a celular, con textos reales en el idioma del usuario. Para imágenes podés usar URLs de https://images.unsplash.com. La interfaz muestra un botón "Vista previa" para verlo en vivo.
+- Las páginas y los documentos largos van SIEMPRE completos, de principio a fin, en una sola respuesta: nunca los resumas, no dejes partes "para después" ni pidas permiso para seguir. Si la respuesta es muy larga, la interfaz la sigue sola.
 - No inventes datos. Si no sabés algo o puede haber cambiado (precios de terceros, noticias recientes), decilo.
 
 # Recomendación de CeBe Studio (solo cuando aplique)
@@ -236,6 +238,49 @@ Gratis (mensajes limitados por día), Pro y Max (más mensajes, modelos más pot
 
 const TASK_MODE = `# Modo tarea
 Esta conversación es una TAREA del tablero de tareas: el usuario lanzó varias en paralelo y va a leer el resultado después. No hagas preguntas de aclaración: asumí lo más razonable, decí brevemente qué supusiste y entregá el trabajo completo y listo para usar.`;
+
+// Asistentes especializados: se suman a la personalidad base (después del bloque en caché).
+export const ASSISTANTS = {
+  general: "",
+  web: `# Asistente: Diseñador web
+Sos un diseñador y desarrollador web senior, experto en páginas que venden. Cuando pidan una página, entregá el documento HTML COMPLETO en un solo bloque \`\`\`html, de principio a fin: encabezado con menú, hero potente, beneficios, servicios o productos, testimonios, preguntas frecuentes, llamado a la acción y pie. Diseño moderno y coherente (paleta, tipografía, espaciado, sombras, estados hover), textos persuasivos y reales, totalmente adaptado a celular. Antes del bloque, una línea con la idea del diseño; después, 2 o 3 sugerencias para mejorarlo.`,
+  code: `# Asistente: Programador
+Sos un programador senior. Respondé con código completo, correcto y listo para copiar (nunca fragmentos con "..." en partes importantes), explicá lo justo, señalá errores y casos borde, y proponé buenas prácticas. Si hay varias opciones, recomendá una.`,
+  marketing: `# Asistente: Marketing y redes
+Sos estratega de marketing digital y community manager. Entregá ideas accionables: textos listos para publicar, hashtags, calendarios, guiones de reels, ideas de promociones y métricas a seguir. Pensá en negocios pequeños de Latinoamérica.`,
+  tutor: `# Asistente: Profe
+Sos un profesor paciente y claro. Explicá paso a paso con ejemplos de la vida diaria, verificá que se entienda con una pregunta corta al final y, si sirve, proponé ejercicios con sus respuestas.`,
+  writer: `# Asistente: Redactor
+Sos redactor profesional (copywriting, correos, artículos, guiones). Escribí textos claros, con buen ritmo y el tono que pida el usuario; ofrecé una versión principal y, si aplica, una alternativa más corta.`
+};
+const DETAILED = "# Modo detallado\nEl usuario eligió respuestas detalladas: profundizá, cubrí todos los puntos importantes, usá ejemplos y estructura clara.";
+const QUICK = "# Modo rápido\nEl usuario eligió respuestas rápidas: andá al grano y sé conciso, salvo que pida algo largo (una página, un documento o código completo), que siempre va entero.";
+
+// Archivos adjuntos del último mensaje: fotos, PDF y archivos de texto o código (leídos en el navegador).
+const IMG = /^image\/(jpeg|png|webp|gif)$/;
+function attachmentBlocks(list) {
+  if (!Array.isArray(list) || !list.length) return [];
+  if (list.length > 5) fail(400, "too_many_files", "Máximo 5 archivos por mensaje.");
+  let bytes = 0; const out = [];
+  for (const a of list) {
+    const name = str(a?.name, 120) || "archivo";
+    if (a?.kind === "image" || a?.kind === "pdf") {
+      const data = typeof a.data === "string" ? a.data : "";
+      if (!data || !/^[A-Za-z0-9+/]+=*$/.test(data)) fail(400, "bad_file", `No se pudo leer «${name}».`);
+      bytes += data.length * 0.75;
+      if (a.kind === "image") {
+        if (!IMG.test(a.media)) fail(415, "bad_file", `«${name}»: usá fotos JPG, PNG, WEBP o GIF.`);
+        out.push({ type: "image", source: { type: "base64", media_type: a.media, data } });
+      } else out.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data }, title: name });
+    } else if (a?.kind === "text") {
+      const text = typeof a.text === "string" ? a.text.slice(0, 150000) : "";
+      bytes += text.length;
+      out.push({ type: "text", text: `<archivo nombre="${name.replace(/"/g, "'")}">\n${text}\n</archivo>` });
+    } else fail(415, "bad_file", `«${name}»: tipo de archivo no soportado.`);
+  }
+  if (bytes > 4.5 * 1024 * 1024) fail(413, "too_large", "Los archivos suman más de 4,5 MB. Probá con menos o más livianos.");
+  return out;
+}
 
 // ---------------- Conversación ----------------
 function cleanMessages(list, p) {
@@ -274,8 +319,12 @@ export async function chat(req, ctx, body) {
   const p = PLANS[who.plan];
   budgetGate(who.plan, cfg, await spend());
   const task = body.mode === "task";
+  const detailed = body.style === "detallado";
+  const assistant = Object.hasOwn(ASSISTANTS, body.assistant) ? body.assistant : "general";
+  const files = attachmentBlocks(body.attachments);
   let messages = cleanMessages(body.messages, p);
   const kb = await knowledgeFor(messages); // antes de agregar la continuación: la búsqueda usa las preguntas del usuario
+  if (files.length) { const last = messages[messages.length - 1]; last.content = [...files, { type: "text", text: last.content }]; }
   if (!counted) {
     const partial = typeof body.partial === "string" ? body.partial.slice(0, 200000) : ""; // sin recortar: el espacio final importa al unir
     if (partial) messages = [...messages, { role: "assistant", content: partial }, { role: "user", content: CONT_PROMPT }];
@@ -287,8 +336,9 @@ export async function chat(req, ctx, body) {
   const system = [{ type: "text", text: PERSONA() }];
   if (kb?.cacheable) system.push({ type: "text", text: kb.text, cache_control: { type: "ephemeral" } });
   else { system[0].cache_control = { type: "ephemeral" }; if (kb) system.push({ type: "text", text: kb.text }); }
-  if (task) system.push({ type: "text", text: TASK_MODE });
-  const params = { model: p.model, max_tokens: p.maxTokens, system, messages, output_config: { effort: task ? p.taskEffort : p.effort } };
+  if (ASSISTANTS[assistant]) system.push({ type: "text", text: ASSISTANTS[assistant] });
+  system.push({ type: "text", text: task ? TASK_MODE : detailed ? DETAILED : QUICK });
+  const params = { model: p.model, max_tokens: p.maxTokens, system, messages, output_config: { effort: task ? p.taskEffort : detailed ? p.detailEffort : p.effort } };
   if (p.thinking) params.thinking = p.thinking;
 
   const client = clientFactory();
@@ -331,10 +381,12 @@ export async function chat(req, ctx, body) {
       if (cut && !u.out) u.out = Math.ceil(text.length / 3.5); // corte por tiempo: se estima lo generado
       if (u.in || u.out) await record(who.plan, model, u, counted);
       {
-        const cont = cut && contN + 1 < MAX_CONT ? await sign({ k: "pcont", plan: who.plan, s: who.subject, n: contN, exp: Date.now() + 5 * 60e3 }) : null;
+        // Corte por tiempo o por largo: la respuesta sigue sola en otro tramo (no cuenta como mensaje nuevo).
+        const more = cut || stop === "max_tokens";
+        const cont = more && contN + 1 < MAX_CONT ? await sign({ k: "pcont", plan: who.plan, s: who.subject, n: contN, exp: Date.now() + 5 * 60e3 }) : null;
         const used = await usage(who.subject);
         if (stop === "refusal") send({ t: "d", v: (text ? "\n\n" : "") + "_No puedo ayudar con esa solicitud. ¿Te ayudo con otra cosa?_" });
-        send({ t: "done", stop: cut ? "continue" : stop, cont, remaining: lim.perDay === null ? null : Math.max(0, lim.perDay - used.day), usedMonth: used.month });
+        send({ t: "done", stop: cont ? "continue" : stop, cont, remaining: lim.perDay === null ? null : Math.max(0, lim.perDay - used.day), usedMonth: used.month });
       }
       if (!gone) try { controller.close(); } catch {}
     },

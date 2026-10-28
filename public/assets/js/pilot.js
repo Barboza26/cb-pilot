@@ -161,11 +161,11 @@
     return done;
   }
   /** Pide una respuesta completa: si el servidor corta por tiempo, pide la continuación sola. */
-  async function ask(history, mode, signal, onText, onSources) {
+  async function ask(history, mode, signal, onText, onSources, extra = {}) {
     let text = "", cont = null, r;
     do {
       const seg = text;
-      const body = cont ? { messages: history, partial: text, cont, mode } : { messages: history, pass, mode };
+      const body = cont ? { messages: history, partial: text, cont, mode, ...extra } : { messages: history, pass, mode, ...extra };
       r = await post("/api/pilot/chat", body, signal, ev => {
         if (ev.t === "d") { text += ev.v; onText(text); }
         else if (ev.t === "reset") { text = seg; onText(text); }
@@ -190,28 +190,38 @@
   const chatById = id => chats.find(c => c.id === id);
   const titleFrom = t => { const s = t.replace(/\s+/g, " ").trim(); return s.length > 52 ? s.slice(0, 50).trimEnd() + "…" : s; };
   function newChat() { const c = { id: uid(), title: T("Nuevo chat", "New chat"), created: Date.now(), updated: Date.now(), pinned: false, messages: [] }; chats.unshift(c); current = c.id; return c; }
-  function openChat(id) { current = id; write(K.current, current); setView("chat"); renderList(); renderThread(true); closeSide(); $("#pl-input").focus({ preventScroll: true }); }
+  function openChat(id) { current = id; write(K.current, current); settings.assistant = chatById(id)?.assistant || "general"; syncPickers(); setView("chat"); renderList(); renderThread(true); closeSide(); $("#pl-input").focus({ preventScroll: true }); }
 
   function send(text) {
-    text = text.trim(); if (!text) return;
+    text = text.trim();
+    if (!text && !pend.length) return;
+    if (pend.some(f => f.loading)) return note(T("Esperá un segundo: todavía estoy leyendo tus archivos.", "One second: still reading your files."));
+    if (!text) text = T("Mirá el archivo adjunto.", "Take a look at the attached file.");
     let chat = chatById(current);
     if (!chat) chat = newChat();
     if (running.has(chat.id)) return;
     if (activeCount() >= limit()) return note(T(`Tu plan permite ${limit()} respuestas a la vez. Esperá a que termine una o mejorá tu plan.`, `Your plan allows ${limit()} responses at once. Wait for one to finish or upgrade.`));
-    chat.messages.push({ role: "user", content: text });
+    const msg = { role: "user", content: text };
+    if (pend.length) { msg.files = pend.map(f => ({ kind: f.kind, name: f.name, thumb: f.thumb || "" })); fileData.set(msg, pend.map(({ kind, name, media, data, text }) => ({ kind, name, media, data, text }))); pend = []; renderAtts(); }
+    chat.assistant = settings.assistant;
+    chat.messages.push(msg);
     if (chat.messages.length === 1) chat.title = titleFrom(text);
     chat.updated = Date.now(); saveChats();
     $("#pl-input").value = ""; grow();
     runChat(chat);
   }
   async function runChat(chat) {
-    const history = chat.messages.filter(m => m.content).map(({ role, content }) => ({ role, content }));
+    const msgs = chat.messages.filter(m => m.content);
+    const lastUser = [...msgs].reverse().find(m => m.role === "user");
+    // Los archivos viajan solo con el último mensaje; los anteriores se mencionan por nombre para no gastar de más.
+    const history = msgs.map(m => ({ role: m.role, content: m.files?.length && m !== lastUser ? `${m.content}\n[${T("Adjuntó", "Attached")}: ${m.files.map(f => f.name).join(", ")}]` : m.content }));
+    const extra = { style: settings.style, assistant: chat.assistant || "general", attachments: fileData.get(lastUser) || [] };
     const bot = { role: "assistant", content: "", pending: true };
     chat.messages.push(bot);
     const ac = new AbortController(); running.set(chat.id, ac);
     renderList(); if (chat.id === current) renderThread(true); syncComposer();
     try {
-      const r = await ask(history, "chat", ac.signal, text => { bot.content = text; paint(chat.id); }, items => { bot.sources = items; });
+      const r = await ask(history, "chat", ac.signal, text => { bot.content = text; paint(chat.id); }, items => { bot.sources = items; }, extra);
       bot.stop = r.stop;
     } catch (e) {
       if (e.name === "AbortError") bot.stop = "stopped";
@@ -284,7 +294,8 @@
   function msgHTML(m, i, chat, { isLast, lastUser }) {
     if (m.role === "user") {
       const canEdit = lastUser && !running.has(chat.id);
-      return `<div class="pl-msg user" data-i="${i}"><div class="pl-bubble">${esc(m.content)}</div>${canEdit ? `<div class="pl-tools"><button type="button" data-act="edit">${icon("edit")}${T("Editar", "Edit")}</button></div>` : ""}</div>`;
+      const files = m.files?.length ? `<div class="pl-ufiles">${m.files.map(f => f.thumb ? `<img src="${esc(f.thumb)}" alt="${esc(f.name)}" title="${esc(f.name)}">` : `<span class="pl-fchip">${fileIcon(f.kind)} ${esc(f.name)}</span>`).join("")}</div>` : "";
+      return `<div class="pl-msg user" data-i="${i}">${files}<div class="pl-bubble">${esc(m.content)}</div>${canEdit ? `<div class="pl-tools"><button type="button" data-act="edit">${icon("edit")}${T("Editar", "Edit")}</button></div>` : ""}</div>`;
     }
     const live = m.pending && running.has(chat.id);
     let body = m.content ? md(m.content, live) : live ? '<span class="pl-typing" aria-label="Escribiendo"><i></i><i></i><i></i></span>' : "";
@@ -296,7 +307,7 @@
       if (m.content) tools += b("copy", "copy", T("Copiar", "Copy"));
       if (m.error && ["quota", "free_paused"].includes(m.error)) tools += b("plans", "pin", T("Ver planes", "See plans"));
       if (isLast) tools += b("regen", "regen", m.error ? T("Reintentar", "Retry") : T("Regenerar", "Regenerate"));
-      if (isLast && m.stop === "max_tokens") tools += b("continue", "more", T("Continuar", "Continue"));
+      if (isLast && m.content && !m.error && (m.stop === "max_tokens" || m.stop === null)) tools += b("continue", "more", T("Continuar", "Continue"));
       if (m.content && lastHtml(m.content)) tools += b("preview-last", "play", T("Vista previa", "Preview"));
       if (m.content) tools += `<button type="button" data-act="rate" data-v="up" aria-label="${T("Buena respuesta", "Good response")}" aria-pressed="${m.rating === "up"}">${icon("up")}</button><button type="button" data-act="rate" data-v="down" aria-label="${T("Mala respuesta", "Bad response")}" aria-pressed="${m.rating === "down"}">${icon("down")}</button>`;
     }
@@ -395,19 +406,22 @@
     const box = $("#pl-plan");
     if (!info) { box.innerHTML = `<small>${esc(offline || T("Conectando…", "Connecting…"))}</small>`; return; }
     const pct = info.perDay ? Math.min(100, Math.round(info.usedToday / info.perDay * 100)) : 0;
+    const mpct = info.perMonth ? Math.min(100, Math.round(info.usedMonth / info.perMonth * 100)) : null;
     box.innerHTML = `<div class="pl-plan-row"><span class="pl-badge ${info.plan}">${T("Plan", "Plan")} ${esc(planName(info.plan))}</span><small>${esc(info.label)}</small></div>
-      <div class="pl-meter" role="progressbar" aria-valuemin="0" aria-valuemax="${info.perDay}" aria-valuenow="${info.usedToday}" aria-label="${T("Mensajes de hoy", "Messages today")}"><i style="width:${pct}%"></i></div>
-      <small>${T(`${info.usedToday} de ${info.perDay} mensajes hoy`, `${info.usedToday} of ${info.perDay} messages today`)}${info.perMonth ? T(` · ${info.usedMonth}/${info.perMonth} este mes`, ` · ${info.usedMonth}/${info.perMonth} this month`) : ""}</small>
+      <div class="pl-plan-row"><small>${T("Uso de hoy", "Today's usage")}</small><b class="pl-pct">${pct} %</b></div>
+      <div class="pl-meter${pct >= 80 ? " is-high" : ""}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="${T("Uso de hoy", "Today's usage")}"><i style="width:${pct}%"></i></div>
+      <small>${pct >= 100 ? T("Se renueva a medianoche.", "Resets at midnight.") : mpct !== null ? T(`Uso del mes: ${mpct} %`, `Monthly usage: ${mpct}%`) : T("Se renueva todos los días.", "Resets every day.")}</small>
       <button type="button" class="pl-upgrade" data-act="plans">${info.plan === "gratis" ? T("✦ Mejorar plan", "✦ Upgrade plan") : T("Ver mi plan", "View my plan")}</button>`;
     hint();
   }
   const crc = n => "₡" + Number(n).toLocaleString(A.lang === "en" ? "en-US" : "es-CR");
   function openPlans() {
     const p = info?.plans || {}, cur = info?.plan || "gratis";
+    const times = k => String(Math.round(((p[k]?.perDay || 1) / (p.gratis?.perDay || 1)) * 10) / 10).replace(".", A.lang === "en" ? "." : ",");
     const FEAT = {
-      gratis: [T("Pilot Flash: rápido y eficiente", "Pilot Flash: fast and efficient"), T(`${p.gratis?.perDay ?? 20} mensajes por día`, `${p.gratis?.perDay ?? 20} messages per day`), T("2 respuestas o tareas a la vez", "2 responses or tasks at once"), T("Vista previa de diseños HTML", "HTML design preview"), T("Historial privado en tu dispositivo", "Private history on your device")],
-      pro: [T("Pilot Pro: respuestas más inteligentes", "Pilot Pro: smarter answers"), T(`${p.pro?.perDay ?? 60} mensajes por día (${p.pro?.perMonth ?? 500} al mes)`, `${p.pro?.perDay ?? 60} messages per day (${p.pro?.perMonth ?? 500} per month)`), T("4 respuestas o tareas a la vez", "4 responses or tasks at once"), T("Respuestas más largas y más memoria", "Longer answers and more memory"), T("Ideal para trabajo y estudio diario", "Ideal for daily work and study")],
-      max: [T("Pilot Max: el modelo más potente", "Pilot Max: the most powerful model"), T(`${p.max?.perDay ?? 80} mensajes por día (${p.max?.perMonth ?? 300} al mes)`, `${p.max?.perDay ?? 80} messages per day (${p.max?.perMonth ?? 300} per month)`), T("6 respuestas o tareas a la vez", "6 responses or tasks at once"), T("Razonamiento profundo para tareas complejas", "Deep reasoning for complex tasks"), T("Memoria más amplia de la conversación", "Largest conversation memory")]
+      gratis: [T("Pilot Flash: rápido y eficiente", "Pilot Flash: fast and efficient"), T("Uso diario incluido, se renueva cada día", "Daily usage included, renews every day"), T("2 respuestas o tareas a la vez", "2 responses or tasks at once"), T("Vista previa de diseños HTML", "HTML design preview"), T("Historial privado en tu dispositivo", "Private history on your device")],
+      pro: [T("Pilot Pro: respuestas más inteligentes", "Pilot Pro: smarter answers"), T(`${times("pro")}× más uso diario que Gratis`, `${times("pro")}× more daily usage than Free`), T("4 respuestas o tareas a la vez", "4 responses or tasks at once"), T("Respuestas más largas y más memoria", "Longer answers and more memory"), T("Ideal para trabajo y estudio diario", "Ideal for daily work and study")],
+      max: [T("Pilot Max: el modelo más potente", "Pilot Max: the most powerful model"), T(`${times("max")}× más uso diario que Gratis`, `${times("max")}× more daily usage than Free`), T("6 respuestas o tareas a la vez", "6 responses or tasks at once"), T("Razonamiento profundo para tareas complejas", "Deep reasoning for complex tasks"), T("Memoria más amplia de la conversación", "Largest conversation memory")]
     };
     const card = k => {
       const price = k === "gratis" ? `${crc(0)} <small>${T("para siempre", "forever")}</small>` : p[k]?.price ? `${crc(p[k].price)} <small>${T("/ mes", "/ month")}</small>` : `<small>${T("Precio por WhatsApp", "Price on WhatsApp")}</small>`;
@@ -435,11 +449,127 @@
   function openSide() { side.classList.add("is-open"); scrim.hidden = false; }
   function closeSide() { side.classList.remove("is-open"); scrim.hidden = true; }
 
+  // ---------------- Caja de texto: modo, asistente, adjuntos y voz ----------------
+  const settings = { style: read("cbpilot-style", "rapido") === "detallado" ? "detallado" : "rapido", assistant: "general" };
+  const MODES = { rapido: ["⚡", "Rápido", "Fast", "Directo al grano", "Straight to the point"], detallado: ["🧠", "Detallado", "Detailed", "Más completo y profundo", "Deeper and more complete"] };
+  const ASSIST = {
+    general: ["✦", "General", "General", "Para todo", "For anything"],
+    web: ["🎨", "Diseñador web", "Web designer", "Páginas completas con vista previa", "Full pages with live preview"],
+    code: ["💻", "Programador", "Developer", "Código completo y explicado", "Complete, explained code"],
+    marketing: ["📣", "Marketing y redes", "Marketing & social", "Posts, campañas y estrategia", "Posts, campaigns and strategy"],
+    tutor: ["📚", "Profe", "Tutor", "Explica paso a paso", "Explains step by step"],
+    writer: ["✍️", "Redactor", "Writer", "Textos, correos y guiones", "Copy, emails and scripts"]
+  };
+  const ACCENTS = { azul: ["#2563EB", "#38BDF8", "Azul", "Blue"], morado: ["#7C3AED", "#C084FC", "Morado", "Purple"], verde: ["#059669", "#34D399", "Verde", "Green"], naranja: ["#EA580C", "#FBBF24", "Naranja", "Orange"], rosa: ["#DB2777", "#F472B6", "Rosa", "Pink"] };
+  function syncPickers() {
+    const m = MODES[settings.style], a = ASSIST[settings.assistant] || ASSIST.general;
+    $("#pl-mode").innerHTML = `<span aria-hidden="true">${m[0]}</span>${esc(T(m[1], m[2]))}`;
+    $("#pl-mode").setAttribute("aria-label", T("Modo de respuesta: ", "Response mode: ") + T(m[1], m[2]));
+    $("#pl-assist").innerHTML = `<span aria-hidden="true">${a[0]}</span>${esc(T(a[1], a[2]))}`;
+    $("#pl-assist").setAttribute("aria-label", T("Asistente: ", "Assistant: ") + T(a[1], a[2]));
+    $("#pl-assist").classList.toggle("is-on", settings.assistant !== "general");
+  }
+
+  // Menú emergente (modo, asistente, apariencia)
+  const menu = $("#pl-menu"); let menuFor = null;
+  function closeMenu() { menu.hidden = true; menuFor?.setAttribute("aria-expanded", "false"); menuFor = null; }
+  function openMenu(btn, html, onClick) {
+    if (menuFor === btn) return closeMenu();
+    closeMenu(); menuFor = btn; btn.setAttribute("aria-expanded", "true");
+    menu.innerHTML = html; menu.hidden = false; menu.onclick = e => { const it = e.target.closest("[data-v]"); if (it) onClick(it.dataset.v, it); };
+    const r = btn.getBoundingClientRect(), w = menu.offsetWidth, h = menu.offsetHeight;
+    menu.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px";
+    menu.style.top = (r.top - h - 8 > 8 ? r.top - h - 8 : r.bottom + 8) + "px";
+    menu.querySelector("[aria-checked=true], [data-v]")?.focus();
+  }
+  const item = (v, [ic, es, en, des, den], on) => `<button type="button" class="pl-mi" role="menuitemradio" aria-checked="${on}" data-v="${v}"><span class="pl-mi-ic" aria-hidden="true">${ic}</span><span><b>${esc(T(es, en))}</b><small>${esc(T(des, den))}</small></span></button>`;
+  $("#pl-mode").addEventListener("click", e => openMenu(e.currentTarget, `<p class="pl-mh">${T("Modo de respuesta", "Response mode")}</p>` + Object.entries(MODES).map(([k, v]) => item(k, v, k === settings.style)).join(""), v => { settings.style = v; write("cbpilot-style", v); syncPickers(); closeMenu(); }));
+  $("#pl-assist").addEventListener("click", e => openMenu(e.currentTarget, `<p class="pl-mh">${T("Asistente", "Assistant")}</p>` + Object.entries(ASSIST).map(([k, v]) => item(k, v, k === settings.assistant)).join(""), v => {
+    settings.assistant = v; const c = chatById(current); if (c && !running.has(c.id)) { c.assistant = v; saveChats(); }
+    syncPickers(); closeMenu(); $("#pl-input").focus();
+  }));
+  function themeMenu() {
+    const th = window.CBPILOT_THEME?.theme || "dark", ac = window.CBPILOT_THEME?.accent || "azul";
+    const seg = [["dark", "🌙", "Oscuro", "Dark"], ["light", "☀️", "Claro", "Light"], ["system", "💻", "Sistema", "System"]];
+    return `<p class="pl-mh">${T("Tema", "Theme")}</p><div class="pl-tseg">${seg.map(([k, ic, es, en]) => `<button type="button" data-v="t:${k}" aria-pressed="${th === k}">${ic} ${T(es, en)}</button>`).join("")}</div>
+      <p class="pl-mh">${T("Color", "Color")}</p><div class="pl-sws">${Object.entries(ACCENTS).map(([k, [c1, c2, es, en]]) => `<button type="button" class="pl-sw" data-v="a:${k}" aria-pressed="${ac === k}" aria-label="${T(es, en)}" title="${T(es, en)}" style="background:linear-gradient(135deg,${c1},${c2})"></button>`).join("")}</div>`;
+  }
+  $("#pl-theme-btn").addEventListener("click", e => openMenu(e.currentTarget, themeMenu(), v => {
+    const [k, val] = v.split(":"); window.CBPILOT_THEME?.set(k === "t" ? "theme" : "accent", val); menu.innerHTML = themeMenu();
+  }));
+  // (un botón que se volvió a dibujar dentro del menú ya no está en la página: no cuenta como "clic afuera")
+  document.addEventListener("click", e => { if (menuFor && e.target.isConnected && !menu.contains(e.target) && !menuFor.contains(e.target)) closeMenu(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && menuFor) { const b = menuFor; closeMenu(); b.focus(); } });
+  addEventListener("resize", closeMenu);
+
+  // Adjuntos: las fotos se achican en el navegador; PDF y archivos de texto se leen aquí y viajan con el mensaje.
+  let pend = [];
+  const fileData = new WeakMap(); // datos completos del adjunto (no se guardan en el historial)
+  const TEXT_EXT = /\.(txt|md|markdown|csv|json|js|mjs|ts|tsx|jsx|py|html?|css|xml|sql|java|php|c|cpp|h|cs|rb|go|rs|yml|yaml|ini|log)$/i;
+  function fileIcon(kind) { return kind === "image" ? "🖼️" : kind === "pdf" ? "📄" : "📝"; }
+  function renderAtts() {
+    const box = $("#pl-atts"); box.hidden = !pend.length;
+    box.innerHTML = pend.map((f, i) => `<span class="pl-att${f.loading ? " is-loading" : ""}">${f.thumb ? `<img src="${esc(f.thumb)}" alt="">` : `<i aria-hidden="true">${fileIcon(f.kind)}</i>`}<span>${esc(f.name)}</span><button type="button" data-rm="${i}" aria-label="${T("Quitar", "Remove")} ${esc(f.name)}">×</button></span>`).join("");
+  }
+  const readAs = (file, how) => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => bad(r.error); r[how](file); });
+  async function shrink(file, max, q) {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((ok, bad) => { const i = new Image(); i.onload = () => ok(i); i.onerror = bad; i.src = url; });
+      const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement("canvas"); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+      const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+      return c.toDataURL("image/jpeg", q);
+    } finally { URL.revokeObjectURL(url); }
+  }
+  async function addFiles(list) {
+    for (const file of [...list]) {
+      if (pend.length >= 5) { note(T("Máximo 5 archivos por mensaje.", "Max 5 files per message.")); break; }
+      const isImg = /^image\/(jpeg|png|webp|gif|bmp|avif)$/.test(file.type), isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+      if (!isImg && !isPdf && !TEXT_EXT.test(file.name) && !file.type.startsWith("text/")) { note(T(`«${file.name}»: por ahora acepto fotos, PDF y archivos de texto o código.`, `“${file.name}”: I accept photos, PDF and text or code files for now.`)); continue; }
+      if (isPdf && file.size > 4 * 1024 * 1024) { note(T(`«${file.name}» pesa más de 4 MB.`, `“${file.name}” is over 4 MB.`)); continue; }
+      const f = { kind: isImg ? "image" : isPdf ? "pdf" : "text", name: file.name.slice(-80), loading: true };
+      pend.push(f); renderAtts();
+      try {
+        if (isImg) { const big = await shrink(file, 1568, .86); f.media = "image/jpeg"; f.data = big.split(",")[1]; f.thumb = await shrink(file, 160, .7); }
+        else if (isPdf) f.data = String(await readAs(file, "readAsDataURL")).split(",")[1];
+        else { const t = String(await readAs(file, "readAsText")); f.text = t.slice(0, 150000); if (t.length > 150000) note(T(`«${file.name}» es muy largo: uso los primeros 150 000 caracteres.`, `“${file.name}” is long: using the first 150,000 characters.`)); }
+        delete f.loading;
+      } catch { pend = pend.filter(x => x !== f); note(T(`No pude leer «${file.name}».`, `Couldn't read “${file.name}”.`)); }
+      renderAtts();
+    }
+  }
+  $("#pl-attach").addEventListener("click", () => $("#pl-file").click());
+  $("#pl-file").addEventListener("change", e => { addFiles(e.target.files); e.target.value = ""; });
+  $("#pl-atts").addEventListener("click", e => { const b = e.target.closest("[data-rm]"); if (b) { pend.splice(+b.dataset.rm, 1); renderAtts(); } });
+  $("#pl-input").addEventListener("paste", e => { const fs = [...(e.clipboardData?.files || [])]; if (fs.length) { e.preventDefault(); addFiles(fs); } });
+  const chatView = $("#pl-chat"), drop = $("#pl-drop"); let dragN = 0;
+  chatView.addEventListener("dragenter", e => { if ([...e.dataTransfer.types].includes("Files")) { dragN++; drop.hidden = false; } });
+  chatView.addEventListener("dragleave", () => { if (--dragN <= 0) { dragN = 0; drop.hidden = true; } });
+  chatView.addEventListener("dragover", e => { if ([...e.dataTransfer.types].includes("Files")) e.preventDefault(); });
+  chatView.addEventListener("drop", e => { e.preventDefault(); dragN = 0; drop.hidden = true; if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
+
+  // Dictado por voz (si el navegador lo permite; en Brave suele estar bloqueado)
+  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec = null;
+  if (Rec) {
+    const mic = $("#pl-mic"); mic.hidden = false;
+    mic.addEventListener("click", () => {
+      if (rec) return rec.stop();
+      const input = $("#pl-input"), base = input.value ? input.value.replace(/\s*$/, " ") : "";
+      rec = new Rec(); rec.lang = A.lang === "en" ? "en-US" : "es-CR"; rec.interimResults = true; rec.continuous = true;
+      rec.onresult = ev => { input.value = base + [...ev.results].map(r => r[0].transcript).join(""); grow(); };
+      rec.onerror = ev => { if (ev.error === "not-allowed" || ev.error === "service-not-allowed" || ev.error === "network") note(T("El dictado por voz no está disponible en este navegador (en Brave suele estar bloqueado). Probá en Chrome o Edge.", "Voice dictation isn't available in this browser (Brave usually blocks it). Try Chrome or Edge.")); };
+      rec.onend = () => { rec = null; mic.classList.remove("is-rec"); mic.setAttribute("aria-pressed", "false"); };
+      try { rec.start(); mic.classList.add("is-rec"); mic.setAttribute("aria-pressed", "true"); } catch { rec = null; }
+    });
+  }
+
   // ---------------- Eventos ----------------
   $("#pl-form").addEventListener("submit", e => { e.preventDefault(); if (running.has(current)) running.get(current).abort(); else send($("#pl-input").value); });
   $("#pl-input").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && matchMedia("(pointer:fine)").matches) { e.preventDefault(); $("#pl-form").requestSubmit(); } });
   $("#pl-input").addEventListener("input", grow);
-  $("#pl-new").addEventListener("click", () => { const c = chatById(current); if (!c || c.messages.length) newChat(); setView("chat"); closeSide(); $("#pl-input").focus(); });
+  $("#pl-new").addEventListener("click", () => { const c = chatById(current); if (!c || c.messages.length) newChat(); settings.assistant = "general"; syncPickers(); setView("chat"); closeSide(); $("#pl-input").focus(); });
   $("#pl-search").addEventListener("input", e => { query = e.target.value.trim(); renderList(); });
   $$(".pl-switch [data-view]").forEach(b => b.addEventListener("click", () => { setView(b.dataset.view); closeSide(); }));
   $("#pl-side-open").addEventListener("click", openSide);
@@ -529,13 +659,14 @@
     }
   });
 
-  A.onLang(() => { renderList(); renderPlan(); renderPacks(); if (view === "tasks") { $("#pl-title").textContent = T("Modo Tareas", "Task mode"); paintTasks(); } else renderThread(); syncComposer(); });
+  A.onLang(() => { syncPickers(); renderAtts(); renderList(); renderPlan(); renderPacks(); if (view === "tasks") { $("#pl-title").textContent = T("Modo Tareas", "Task mode"); paintTasks(); } else renderThread(); syncComposer(); });
 
   // ---------------- Inicio ----------------
   const q = new URLSearchParams(location.search).get("q");
   if (q) { $("#pl-input").value = q.slice(0, 2000); grow(); }
   if (current && !chatById(current)) current = null;
-  renderPacks(); renderList(); renderPlan();
+  settings.assistant = chatById(current)?.assistant || "general";
+  syncPickers(); renderPacks(); renderList(); renderPlan();
   setView(location.hash === "#tareas" ? "tasks" : "chat");
   renderThread(true);
   refreshStatus().then(pump);
