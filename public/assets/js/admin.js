@@ -41,7 +41,7 @@
     });
   }
 
-  const TABS = [["resumen", "Uso, planes y códigos"], ["conocimiento", "Conocimiento"], ["auditoria", "Auditoría"], ["cuenta", "Cuenta"]];
+  const TABS = [["resumen", "Uso, planes y códigos"], ["usuarios", "Usuarios"], ["conocimiento", "Conocimiento"], ["auditoria", "Auditoría"], ["cuenta", "Cuenta"]];
   const TYPE = { url: "Enlace", file: "Archivo", text: "Texto" };
   const size = n => (n >= 1e6 ? (n / 1e6).toFixed(1) + " M" : n >= 1e3 ? Math.round(n / 1e3) + " mil" : n) + " caracteres";
   async function upload(file) {
@@ -76,6 +76,7 @@
           ${Object.keys(P).map(k => `<div class="card kpi"><span class="muted">Plan ${esc(P[k].name)}</span><b>${sp.plans?.[k]?.msgs || 0}</b><small class="muted">${usd(sp.plans?.[k]?.usd)}</small></div>`).join("")}</div>
         <form class="card checkout" id="pcfg"><h2>Configuración</h2>
           <label class="check"><input type="checkbox" id="q-en" ${c.enabled ? "checked" : ""}> CB Pilot activo (desmarcalo para pausarlo de inmediato).</label>
+          <label class="check"><input type="checkbox" id="q-ra" ${c.requireAccount ? "checked" : ""}> Pedir cuenta para usar CB Pilot (también el plan gratis). Si está desmarcado, se puede chatear sin registrarse.</label>
           <div class="fields"><div class="field"><label for="q-b">Presupuesto mensual de la IA (US$)</label><input id="q-b" type="number" min="1" step="1" value="${c.budgetUsd}"></div>
           <div class="field"><label for="q-fs">El plan gratis se pausa al llegar al (% del presupuesto)</label><input id="q-fs" type="number" min="0" max="100" value="${Math.round(c.freeShare * 100)}"></div>
           <div class="field"><label for="q-fd">Mensajes gratis por día (por persona)</label><input id="q-fd" type="number" min="0" max="500" value="${c.freePerDay}"></div><div class="field"></div>
@@ -94,7 +95,7 @@
         <p class="muted">Privacidad: el servidor no guarda el contenido de los chats; solo cuenta mensajes y gasto. Las conversaciones quedan en el dispositivo de cada persona.</p>`;
       $("#pcfg").addEventListener("submit", async e => {
         e.preventDefault();
-        const config = { enabled: $("#q-en").checked, budgetUsd: Number($("#q-b").value), freeShare: Number($("#q-fs").value) / 100, freePerDay: Number($("#q-fd").value), prices: { pro: $("#q-pp").value, max: $("#q-pm").value } };
+        const config = { enabled: $("#q-en").checked, requireAccount: $("#q-ra").checked, budgetUsd: Number($("#q-b").value), freeShare: Number($("#q-fs").value) / 100, freePerDay: Number($("#q-fd").value), prices: { pro: $("#q-pp").value, max: $("#q-pm").value } };
         try { await api("/api/admin/pilot/config", { config }); $("#q-msg").innerHTML = msg("Guardado.", true); } catch (err) { $("#q-msg").innerHTML = msg(err.message); }
       });
       $("#pcode").addEventListener("submit", async e => {
@@ -110,6 +111,57 @@
       v.querySelectorAll("[data-revoke]").forEach(b => b.addEventListener("click", async () => {
         if (!confirm("¿Desactivar este código? El cliente pierde el acceso al plan.")) return;
         try { await api("/api/admin/pilot/revoke", { id: b.dataset.revoke }); VIEWS.resumen(v); } catch (err) { alert(err.message); }
+      }));
+    },
+    // Usuarios: cuentas de clientes, sus planes y acciones del dueño.
+    async usuarios(v, keep = {}) {
+      const d = await api("/api/admin/users"), list = d.users;
+      const PLAN = { gratis: "Gratis", pro: "Pro", max: "Max" };
+      const week = Date.now() - 7 * 864e5;
+      const q = (keep.q || "").toLowerCase();
+      const shown = list.filter(u => !q || u.name.toLowerCase().includes(q) || u.email.includes(q));
+      v.innerHTML = `<div class="kpis"><div class="card kpi"><span class="muted">Cuentas</span><b>${list.length}</b></div>
+          <div class="card kpi"><span class="muted">Con plan pago</span><b>${list.filter(u => u.plan !== "gratis").length}</b></div>
+          <div class="card kpi"><span class="muted">Nuevas esta semana</span><b>${list.filter(u => Date.parse(u.createdAt) > week).length}</b></div>
+          <div class="card kpi"><span class="muted">Bloqueadas</span><b>${list.filter(u => u.blocked).length}</b></div></div>
+        <p class="muted">Los clientes crean su cuenta desde CB Pilot (botón «Iniciar sesión»). Aquí podés darles un plan sin código, quitarlo, bloquear, crear una contraseña temporal si la olvidaron o eliminar la cuenta. Nunca se ve la contraseña ni el contenido de sus chats.</p>
+        <div class="field"><label for="us-q">Buscar por nombre o correo</label><input id="us-q" type="search" value="${esc(keep.q || "")}" placeholder="ana@ejemplo.com"></div>
+        <div class="tbl"><table><tr><th>Cliente</th><th>Plan</th><th>Registro</th><th>Último ingreso</th><th>Estado</th><th></th></tr>
+        ${shown.map(u => `<tr data-id="${esc(u.id)}"><td><b>${esc(u.name)}</b><br><small class="muted">${esc(u.email)}</small></td>
+          <td>${PLAN[u.plan] || u.plan}${u.planExpiresAt ? `<br><small class="muted">hasta ${date(u.planExpiresAt)}${u.viaCode ? " · por código" : ""}</small>` : ""}</td>
+          <td>${date(u.createdAt)}</td><td>${u.lastLoginAt ? date(u.lastLoginAt) : "—"}</td><td>${u.blocked ? "Bloqueada" : "Activa"}</td>
+          <td><button class="btn btn-ghost btn-sm" data-manage>Gestionar</button></td></tr>`).join("") || `<tr><td colspan=6>${list.length ? "Sin resultados." : "Todavía no hay cuentas."}</td></tr>`}</table></div>
+        <div id="us-panel"></div>`;
+      const qi = $("#us-q"); qi.addEventListener("input", () => { clearTimeout(qi.t); qi.t = setTimeout(() => VIEWS.usuarios(v, { q: qi.value }).then(() => { const x = $("#us-q"); x.focus(); x.setSelectionRange(x.value.length, x.value.length); }), 250); });
+      const act = async (id, action, extra = {}) => api("/api/admin/users/action", { id, action, ...extra });
+      v.querySelectorAll("[data-manage]").forEach(b => b.addEventListener("click", () => {
+        const u = list.find(x => x.id === b.closest("[data-id]").dataset.id);
+        $("#us-panel").innerHTML = `<div class="card checkout us-card"><h2>${esc(u.name)}</h2><p class="muted">${esc(u.email)} · plan ${PLAN[u.plan]}${u.planExpiresAt ? ` hasta ${date(u.planExpiresAt)}` : ""}</p>
+          <form id="us-plan" class="kb-row"><div class="field"><label for="us-p">Dar plan</label><select id="us-p"><option value="pro">Pro</option><option value="max">Max</option></select></div>
+            <div class="field"><label for="us-d">Días</label><input id="us-d" type="number" min="1" max="400" value="30"></div><button class="btn btn-primary">Dar plan</button></form>
+          <p class="muted">Si ya tiene ese plan vigente, los días se suman. Usalo cuando te pague por SINPE: no hace falta crear un código.</p>
+          <div class="kb-acts">${u.plan !== "gratis" ? '<button class="btn btn-ghost btn-sm" data-a="removePlan">Quitar plan</button>' : ""}
+            <button class="btn btn-ghost btn-sm" data-a="${u.blocked ? "unblock" : "block"}">${u.blocked ? "Desbloquear" : "Bloquear"}</button>
+            <button class="btn btn-ghost btn-sm" data-a="resetPassword">Contraseña temporal</button>
+            <button class="btn btn-ghost btn-sm" data-a="delete">Eliminar cuenta</button></div><div id="us-msg"></div></div>`;
+        $("#us-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+        $("#us-plan").addEventListener("submit", async e => {
+          e.preventDefault();
+          try { const r = await act(u.id, "plan", { plan: $("#us-p").value, days: Number($("#us-d").value) }); await VIEWS.usuarios(v, keep); $("#us-panel").innerHTML = msg(`Listo: ${u.name} tiene plan ${PLAN[r.user.plan]} hasta el ${date(r.user.planExpiresAt)}`, true); }
+          catch (err) { $("#us-msg").innerHTML = msg(err.message); }
+        });
+        $("#us-panel").querySelectorAll("[data-a]").forEach(x => x.addEventListener("click", async () => {
+          const a = x.dataset.a;
+          const ask = { removePlan: "¿Quitarle el plan? Pasa a Gratis.", block: "¿Bloquear la cuenta? Se cierra su sesión y no puede entrar.", resetPassword: "¿Crear una contraseña temporal? La actual deja de funcionar.", delete: "¿Eliminar la cuenta? No se puede deshacer." }[a];
+          if (ask && !confirm(ask)) return;
+          try {
+            const r = await act(u.id, a);
+            await VIEWS.usuarios(v, keep);
+            $("#us-panel").innerHTML = r.tempPassword
+              ? `<div class="card"><p class="form-msg ok">Contraseña temporal de ${esc(u.name)}: <b style="font-family:var(--f-mono)">${esc(r.tempPassword)}</b> — se muestra una sola vez.</p><p class="muted">Mandásela por WhatsApp y pedile que la cambie en «Mi cuenta».</p></div>`
+              : msg(a === "delete" ? "Cuenta eliminada." : "Hecho.", true);
+          } catch (err) { $("#us-msg").innerHTML = msg(err.message); }
+        }));
       }));
     },
     // Base de conocimiento: lo que CB Pilot consulta antes de responder.

@@ -179,10 +179,13 @@
   async function refreshStatus() {
     try { info = await post("/api/pilot/status", { pass }); if (pass && !info.passValid) { pass = null; write(K.pass, null); } }
     catch (e) { info = null; if (e.code === "offline") offline = e.message; }
-    renderPlan(); $("#pl-model").textContent = info ? info.label : "CB Pilot";
+    user = info?.user || null;
+    renderAcct(); renderPlan();
+    if (info?.requireAccount && !user) openAuth("register", true); $("#pl-model").textContent = info ? info.label : "CB Pilot";
     if (!current || !chatById(current)?.messages.length) renderThread();
   }
-  let offline = null;
+  let offline = null, user = null;
+  const firstName = () => (user?.name || "").trim().split(/\s+/)[0];
   const activeCount = () => running.size;
   const limit = () => (info ? info.parallel : 2);
 
@@ -225,7 +228,7 @@
       bot.stop = r.stop;
     } catch (e) {
       if (e.name === "AbortError") bot.stop = "stopped";
-      else { bot.error = e.code || "error"; bot.errorMsg = e.message; if (["quota", "free_paused", "budget"].includes(e.code)) refreshStatus(); }
+      else { bot.error = e.code || "error"; bot.errorMsg = e.message; if (["quota", "free_paused", "budget"].includes(e.code)) refreshStatus(); if (e.code === "login_required") openAuth("register", true); }
     } finally {
       delete bot.pending; running.delete(chat.id); chat.updated = Date.now(); saveChats();
       renderList(); syncComposer();
@@ -281,7 +284,7 @@
   function hello() {
     const warn = offline || (info && !info.available ? info.reason : "");
     return `<div class="pl-hello"><div class="pl-orb" aria-hidden="true"><b>CB</b></div>
-      <h2>${T("¿En qué te ayudo <span class='grad'>hoy</span>?", "How can I help <span class='grad'>today</span>?")}</h2>
+      <h2>${user ? T(`Hola, ${esc(firstName())}. ¿En qué te ayudo <span class='grad'>hoy</span>?`, `Hi, ${esc(firstName())}. How can I help <span class='grad'>today</span>?`) : T("¿En qué te ayudo <span class='grad'>hoy</span>?", "How can I help <span class='grad'>today</span>?")}</h2>
       <p>${T("Soy CB Pilot, tu asistente de inteligencia artificial. Escribo, diseño, programo, planeo, traduzco y te ayudo a estudiar. Y puedo hacer varias tareas al mismo tiempo.", "I'm CB Pilot, your AI assistant. I write, design, code, plan, translate and help you study. And I can work on several tasks at once.")}</p>
       ${warn ? `<p class="form-msg" role="status">${esc(warn)}</p>` : ""}
       <div class="pl-chips">${CHIPS.map((c, i) => `<button type="button" class="pl-chip" data-chip="${i}"><b>${c[0]} ${T(c[1], c[2])}</b><span>${T(c[3], c[4])}</span></button>`).join("")}</div></div>`;
@@ -329,9 +332,9 @@
     btn.setAttribute("aria-label", busy ? T("Detener", "Stop") : T("Enviar", "Send"));
   }
   const grow = () => { const t = $("#pl-input"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 220) + "px"; };
-  function note(text) {
+  function note(text, ok = false) {
     const box = $("#pl-thread"); const p = document.createElement("p");
-    p.className = "form-msg"; p.setAttribute("role", "status"); p.textContent = text;
+    p.className = "form-msg" + (ok ? " ok" : ""); p.setAttribute("role", "status"); p.textContent = text;
     box.append(p); setTimeout(() => p.remove(), 6000);
     const sc = $("#pl-scroll"); sc.scrollTop = sc.scrollHeight;
   }
@@ -432,6 +435,8 @@
     $("#pl-plans-body").innerHTML = `<div class="pl-dialog-head"><div><span class="eyebrow">CB Pilot</span><h2 id="pl-plans-title">${T("Elegí tu <span class='grad'>plan</span>", "Choose your <span class='grad'>plan</span>")}</h2></div><button type="button" class="pl-icon" data-close aria-label="${T("Cerrar", "Close")}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
       <div class="pl-plans">${["gratis", "pro", "max"].map(card).join("")}</div>
       <p class="muted">${T("Pagás por SINPE Móvil y te enviamos un código de acceso para activar tu plan en cualquier dispositivo.", "Pay via SINPE Móvil and we'll send you an access code to activate your plan on any device.")}</p>
+      <p class="muted">${user ? T("Al activar un código con tu sesión iniciada, el plan queda en tu cuenta y lo usás en todos tus dispositivos.", "When you activate a code while signed in, the plan is saved to your account and works on all your devices.") : T("Consejo: <button type='button' class='pl-link' data-act='auth'>creá una cuenta gratis</button> para usar tu plan en todos tus dispositivos.", "Tip: <button type='button' class='pl-link' data-act='auth'>create a free account</button> to use your plan on all your devices.")}</p>
+      ${user && info?.plan !== "gratis" && info?.expiresAt ? `<p class="form-msg ok">${T("Plan", "Plan")} ${esc(planName(info.plan))} ${T("activo en tu cuenta hasta", "active on your account until")} ${new Date(info.expiresAt).toLocaleDateString(A.lang === "en" ? "en-US" : "es-CR")}.</p>` : ""}
       ${info?.passValid ? `<p class="form-msg ok">${T("Plan", "Plan")} ${esc(planName(info.plan))} ${T("activo hasta", "active until")} ${new Date(info.expiresAt).toLocaleDateString(A.lang === "en" ? "en-US" : "es-CR")}. <button type="button" class="pl-link" data-act="logout">${T("Quitar el código de este dispositivo", "Remove the code from this device")}</button></p>` : ""}
       <form class="pl-activate" id="pl-activate"><div class="field"><label for="pl-code">${T("¿Ya tenés un código?", "Already have a code?")}</label><input id="pl-code" placeholder="CBP-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false" required></div><button class="btn btn-primary" type="submit">${T("Activar", "Activate")}</button></form><div id="pl-act-msg"></div>`;
     const dlg = $("#pl-plans"); if (!dlg.open) dlg.showModal();
@@ -565,6 +570,111 @@
     });
   }
 
+  // ---------------- Cuenta del cliente ----------------
+  const initials = n => (n || "?").trim().split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+  function renderAcct() {
+    const box = $("#pl-acct");
+    if (!info) { box.innerHTML = ""; return; }
+    box.innerHTML = user
+      ? `<button type="button" class="pl-me" id="pl-me" aria-haspopup="menu" aria-expanded="false"><span class="pl-avatar" aria-hidden="true">${esc(initials(user.name))}</span><span class="pl-me-txt"><b>${esc(user.name)}</b><small>${esc(user.email)}</small></span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>`
+      : `<button type="button" class="btn btn-primary btn-sm pl-login" data-auth="login">${T("Iniciar sesión", "Sign in")}</button><button type="button" class="pl-link pl-signup" data-auth="register">${T("o crear una cuenta gratis", "or create a free account")}</button>`;
+  }
+  $("#pl-acct").addEventListener("click", e => {
+    const a = e.target.closest("[data-auth]"); if (a) return openAuth(a.dataset.auth);
+    const me = e.target.closest("#pl-me"); if (!me) return;
+    openMenu(me, `<p class="pl-mh">${esc(user.email)}</p>${item("account", ["👤", "Mi cuenta", "My account", "Perfil, plan y contraseña", "Profile, plan and password"], false)}${item("plans", ["✦", "Planes", "Plans", "Mejorar o activar un código", "Upgrade or activate a code"], false)}${item("logout", ["↩", "Cerrar sesión", "Sign out", "En este dispositivo", "On this device"], false)}`, async v => {
+      closeMenu();
+      if (v === "account") openAccount(); else if (v === "plans") openPlans(); else await logout();
+    });
+  });
+  async function logout() {
+    await post("/api/account/logout", {}).catch(() => {});
+    user = null; await refreshStatus(); renderThread();
+    $("#pl-live").textContent = T("Cerraste sesión.", "Signed out.");
+  }
+
+  // Iniciar sesión / crear cuenta. "forced" = el dueño pide cuenta para usar CB Pilot (no se puede cerrar).
+  let authForced = false;
+  function openAuth(mode = "login", forced = false) {
+    authForced = forced;
+    const reg = mode === "register", dlg = $("#pl-auth");
+    $("#pl-auth-body").innerHTML = `<div class="pl-auth-head"><span class="logo-orb pl-auth-orb" aria-hidden="true"><span>CB</span></span>
+        <h2 id="pl-auth-title">${reg ? T("Creá tu cuenta", "Create your account") : T("Bienvenido de vuelta", "Welcome back")}</h2>
+        <p class="muted">${forced ? T("Para usar CB Pilot necesitás una cuenta. Es gratis.", "You need an account to use CB Pilot. It's free.") : reg ? T("Gratis. Tu plan y tu uso te siguen en todos tus dispositivos.", "Free. Your plan and usage follow you on every device.") : T("Entrá para usar tu plan en este dispositivo.", "Sign in to use your plan on this device.")}</p>
+        ${forced ? "" : `<button type="button" class="pl-icon pl-auth-x" data-close aria-label="${T("Cerrar", "Close")}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`}</div>
+      <div class="pl-tabs" role="tablist"><button type="button" role="tab" aria-selected="${!reg}" data-tab="login">${T("Iniciar sesión", "Sign in")}</button><button type="button" role="tab" aria-selected="${reg}" data-tab="register">${T("Crear cuenta", "Create account")}</button></div>
+      <form id="pl-auth-form" class="pl-auth-form" novalidate>
+        ${reg ? `<div class="field"><label for="au-name">${T("Nombre", "Name")}</label><input id="au-name" autocomplete="name" required maxlength="80"></div>` : ""}
+        <div class="field"><label for="au-email">${T("Correo", "Email")}</label><input id="au-email" type="email" autocomplete="email" required></div>
+        <div class="field"><label for="au-pw">${T("Contraseña", "Password")}${reg ? ` <small class="muted">${T("(mínimo 8 caracteres)", "(at least 8 characters)")}</small>` : ""}</label>
+          <div class="pl-pw"><input id="au-pw" type="password" autocomplete="${reg ? "new-password" : "current-password"}" required minlength="${reg ? 8 : 1}"><button type="button" class="pl-pw-eye" data-eye aria-label="${T("Mostrar contraseña", "Show password")}">👁</button></div></div>
+        <div id="au-msg"></div>
+        <button class="btn btn-primary" type="submit">${reg ? T("Crear cuenta", "Create account") : T("Entrar", "Sign in")}</button>
+        ${reg ? `<p class="muted pl-auth-legal">${T("Al crear tu cuenta aceptás los <a href='/terminos/' target='_blank'>términos</a> y la <a href='/privacidad/' target='_blank'>privacidad</a>.", "By creating an account you accept the <a href='/terminos/' target='_blank'>terms</a> and <a href='/privacidad/' target='_blank'>privacy policy</a>.")}</p>` : `<p class="muted pl-auth-legal">${T("¿Olvidaste tu contraseña? Escribinos por", "Forgot your password? Message us on")} <a href="https://wa.me/${esc(info?.whatsapp || "")}" target="_blank" rel="noopener noreferrer">WhatsApp</a>.</p>`}
+      </form>`;
+    dlg.dataset.mode = mode;
+    if (!dlg.open) dlg.showModal();
+    $(reg ? "#au-name" : "#au-email").focus();
+  }
+  $("#pl-auth").addEventListener("cancel", e => { if (authForced) e.preventDefault(); });
+  $("#pl-auth").addEventListener("click", e => {
+    const dlg = e.currentTarget;
+    if (!authForced && (e.target === dlg || e.target.closest("[data-close]"))) return dlg.close();
+    const tab = e.target.closest("[data-tab]"); if (tab) return openAuth(tab.dataset.tab, authForced);
+    const eye = e.target.closest("[data-eye]"); if (eye) { const i = $("#au-pw"); i.type = i.type === "password" ? "text" : "password"; }
+  });
+  $("#pl-auth").addEventListener("submit", async e => {
+    e.preventDefault();
+    const reg = e.currentTarget.dataset.mode === "register", btn = e.target.querySelector("[type=submit]"), box = $("#au-msg");
+    const body = { email: $("#au-email").value, password: $("#au-pw").value };
+    if (reg) body.name = $("#au-name").value;
+    btn.disabled = true;
+    try {
+      const r = await post(reg ? "/api/account/register" : "/api/account/login", body);
+      user = r.user; authForced = false; $("#pl-auth").close();
+      await refreshStatus(); renderThread();
+      note(reg ? T(`¡Bienvenido, ${firstName()}! Tu cuenta está lista.`, `Welcome, ${firstName()}! Your account is ready.`) : T(`¡Hola de nuevo, ${firstName()}!`, `Welcome back, ${firstName()}!`), true);
+    } catch (err) { box.innerHTML = `<p class="form-msg" role="alert">${esc(err.message)}</p>`; btn.disabled = false; }
+  });
+
+  // Mi cuenta: perfil, plan, contraseña y eliminar la cuenta.
+  function openAccount() {
+    if (!user) return openAuth("login");
+    const pct = info?.perDay ? Math.min(100, Math.round(info.usedToday / info.perDay * 100)) : 0;
+    const exp = info?.plan !== "gratis" && info?.expiresAt ? new Date(info.expiresAt).toLocaleDateString(A.lang === "en" ? "en-US" : "es-CR", { dateStyle: "long" }) : "";
+    $("#pl-account-body").innerHTML = `<div class="pl-acc-head"><span class="pl-avatar pl-avatar-lg" aria-hidden="true">${esc(initials(user.name))}</span><div><h2 id="pl-account-title">${esc(user.name)}</h2><p class="muted">${esc(user.email)}</p></div>
+        <button type="button" class="pl-icon pl-auth-x" data-close aria-label="${T("Cerrar", "Close")}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+      <section class="pl-acc-card"><div class="pl-plan-row"><span class="pl-badge ${esc(info?.plan || "gratis")}">${T("Plan", "Plan")} ${esc(planName(info?.plan || "gratis"))}</span><button type="button" class="btn btn-ghost btn-sm" data-act="plans">${info?.plan === "gratis" ? T("✦ Mejorar plan", "✦ Upgrade") : T("Ver planes", "View plans")}</button></div>
+        ${exp ? `<p class="muted">${T("Activo hasta el", "Active until")} ${esc(exp)}</p>` : ""}
+        <div class="pl-plan-row"><small>${T("Uso de hoy", "Today's usage")}</small><b class="pl-pct">${pct} %</b></div><div class="pl-meter${pct >= 80 ? " is-high" : ""}"><i style="width:${pct}%"></i></div>
+        <p class="muted">${T(`Miembro desde ${new Date(user.createdAt).toLocaleDateString("es-CR", { month: "long", year: "numeric" })}.`, `Member since ${new Date(user.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}.`)}</p></section>
+      <form class="pl-acc-card" id="acc-profile"><h3>${T("Perfil", "Profile")}</h3><div class="field"><label for="acc-name">${T("Nombre", "Name")}</label><input id="acc-name" value="${esc(user.name)}" maxlength="80" required></div><div class="acc-msg"></div><button class="btn btn-primary btn-sm" type="submit">${T("Guardar", "Save")}</button></form>
+      <form class="pl-acc-card" id="acc-password"><h3>${T("Contraseña", "Password")}</h3><div class="fields"><div class="field"><label for="acc-cur">${T("Actual", "Current")}</label><input id="acc-cur" type="password" autocomplete="current-password" required></div><div class="field"><label for="acc-new">${T("Nueva (mínimo 8)", "New (min. 8)")}</label><input id="acc-new" type="password" autocomplete="new-password" minlength="8" required></div></div>
+        <p class="muted">${T("Al cambiarla se cierra la sesión en tus otros dispositivos.", "Changing it signs you out on your other devices.")}</p><div class="acc-msg"></div><button class="btn btn-primary btn-sm" type="submit">${T("Cambiar contraseña", "Change password")}</button></form>
+      <section class="pl-acc-card"><h3>${T("Privacidad", "Privacy")}</h3><p class="muted">${T("Tus chats se guardan solo en este dispositivo. Tu cuenta guarda tu nombre, correo, plan y uso.", "Your chats are stored only on this device. Your account stores your name, email, plan and usage.")}</p>
+        <div class="pl-acc-row"><button type="button" class="btn btn-ghost btn-sm" data-act="logout">${T("Cerrar sesión", "Sign out")}</button><button type="button" class="btn btn-ghost btn-sm pl-danger" data-act="delete">${T("Eliminar mi cuenta", "Delete my account")}</button></div>
+        <form id="acc-delete" hidden><div class="field"><label for="acc-del">${T("Para confirmar, escribí tu contraseña", "To confirm, enter your password")}</label><input id="acc-del" type="password" autocomplete="current-password" required></div><div class="acc-msg"></div><button class="btn btn-primary btn-sm pl-danger-btn" type="submit">${T("Eliminar definitivamente", "Delete permanently")}</button></form></section>`;
+    const dlg = $("#pl-account"); if (!dlg.open) dlg.showModal();
+  }
+  const accMsg = (form, text, ok) => { form.querySelector(".acc-msg").innerHTML = `<p class="form-msg${ok ? " ok" : ""}" role="status">${esc(text)}</p>`; };
+  $("#pl-account").addEventListener("click", async e => {
+    const dlg = e.currentTarget;
+    if (e.target === dlg || e.target.closest("[data-close]")) return dlg.close();
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    if (b.dataset.act === "plans") { dlg.close(); openPlans(); }
+    if (b.dataset.act === "logout") { dlg.close(); await logout(); }
+    if (b.dataset.act === "delete") { const f = $("#acc-delete"); f.hidden = !f.hidden; if (!f.hidden) $("#acc-del").focus(); }
+  });
+  $("#pl-account").addEventListener("submit", async e => {
+    e.preventDefault(); const f = e.target, btn = f.querySelector("[type=submit]"); btn.disabled = true;
+    try {
+      if (f.id === "acc-profile") { const r = await post("/api/account/profile", { name: $("#acc-name").value }); user = r.user; renderAcct(); renderThread(); openAccount(); accMsg($("#acc-profile"), T("Guardado.", "Saved."), true); return; }
+      if (f.id === "acc-password") { await post("/api/account/password", { current: $("#acc-cur").value, next: $("#acc-new").value }); f.reset(); accMsg(f, T("Contraseña cambiada.", "Password changed."), true); }
+      if (f.id === "acc-delete") { await post("/api/account/delete", { password: $("#acc-del").value }); $("#pl-account").close(); user = null; await refreshStatus(); renderThread(); note(T("Tu cuenta fue eliminada.", "Your account was deleted."), true); return; }
+    } catch (err) { accMsg(f, err.message); }
+    btn.disabled = false;
+  });
+
   // ---------------- Eventos ----------------
   $("#pl-form").addEventListener("submit", e => { e.preventDefault(); if (running.has(current)) running.get(current).abort(); else send($("#pl-input").value); });
   $("#pl-input").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && matchMedia("(pointer:fine)").matches) { e.preventDefault(); $("#pl-form").requestSubmit(); } });
@@ -576,6 +686,7 @@
   $("#pl-side-close").addEventListener("click", closeSide);
   scrim.addEventListener("click", closeSide);
   $("#pl-plans-open").addEventListener("click", openPlans);
+  $("#pl-plan").addEventListener("click", e => { if (e.target.closest("[data-act=plans]")) openPlans(); });
   $("#pl-canvas-close").addEventListener("click", closePreview);
   $$(".pl-seg [data-size]").forEach(b => b.addEventListener("click", () => { $$(".pl-seg [data-size]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); $("#pl-canvas").classList.toggle("is-mobile", b.dataset.size === "mobile"); }));
   $("#pl-canvas-dl").addEventListener("click", () => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([canvasHtml], { type: "text/html" })); a.download = "cb-pilot-diseno.html"; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); });
@@ -628,13 +739,15 @@
   $("#pl-plans").addEventListener("click", async e => {
     if (e.target === e.currentTarget || e.target.closest("[data-close]")) return e.currentTarget.close();
     if (e.target.closest("[data-act=logout]")) { pass = null; write(K.pass, null); await refreshStatus(); openPlans(); }
+    if (e.target.closest("[data-act=auth]")) { e.currentTarget.close(); openAuth("register"); }
   });
   $("#pl-plans").addEventListener("submit", async e => {
     if (e.target.id !== "pl-activate") return; e.preventDefault();
     const box = $("#pl-act-msg"), btn = e.target.querySelector("button"); btn.disabled = true;
     try {
       const r = await post("/api/pilot/activate", { code: $("#pl-code").value });
-      pass = r.pass; write(K.pass, pass); await refreshStatus(); openPlans();
+      if (r.pass) { pass = r.pass; write(K.pass, pass); } // sin cuenta: el plan queda en este dispositivo
+      await refreshStatus(); openPlans();
       $("#pl-act-msg").innerHTML = `<p class="form-msg ok" role="status">${T("¡Listo! Tu plan", "Done! Your")} ${esc(info?.planName || r.plan)} ${T("ya está activo.", "plan is active.")}</p>`;
     } catch (err) { box.innerHTML = `<p class="form-msg" role="alert">${esc(err.message)}</p>`; btn.disabled = false; }
   });
@@ -659,7 +772,7 @@
     }
   });
 
-  A.onLang(() => { syncPickers(); renderAtts(); renderList(); renderPlan(); renderPacks(); if (view === "tasks") { $("#pl-title").textContent = T("Modo Tareas", "Task mode"); paintTasks(); } else renderThread(); syncComposer(); });
+  A.onLang(() => { syncPickers(); renderAcct(); renderAtts(); renderList(); renderPlan(); renderPacks(); if (view === "tasks") { $("#pl-title").textContent = T("Modo Tareas", "Task mode"); paintTasks(); } else renderThread(); syncComposer(); });
 
   // ---------------- Inicio ----------------
   const q = new URLSearchParams(location.search).get("q");

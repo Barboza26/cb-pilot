@@ -5,6 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getJSON, update, listKeys } from "./db.mjs";
 import { fail, sha256, str, int, now, sign, verify, clientIp } from "./util.mjs";
 import { knowledgeFor } from "./knowledge.mjs";
+import { currentUser, activePlan, setPlan, publicUser } from "./users.mjs";
 import crypto from "node:crypto";
 
 // Precios de Anthropic por millón de tokens (USD, octubre 2026). Solo sirven para llevar la cuenta del gasto.
@@ -28,6 +29,7 @@ export const DEFAULT_CONFIG = {
   budgetUsd: Number(process.env.PILOT_BUDGET_USD) || 25, // tope de gasto mensual en la API de Claude
   freeShare: 0.7,          // el plan gratis se pausa al llegar a este % del presupuesto (el resto queda para los planes pagos)
   freePerDay: 40,
+  requireAccount: false,   // true = hay que iniciar sesión para chatear (también en el plan gratis)
   prices: { pro: null, max: null } // colones por mes; null = "consultar"
 };
 
@@ -61,7 +63,7 @@ export async function savePilotConfig(input) {
   const share = Number(input?.freeShare);
   if (!(share >= 0 && share <= 1)) fail(400, "bad_share", "El porcentaje del plan gratis debe estar entre 0 y 100.");
   const c = {
-    enabled: input?.enabled !== false, budgetUsd: Math.round(budget * 100) / 100, freeShare: share,
+    enabled: input?.enabled !== false, requireAccount: input?.requireAccount === true, budgetUsd: Math.round(budget * 100) / 100, freeShare: share,
     freePerDay: int(input?.freePerDay, 0, 500) ?? fail(400, "bad_limit", "Mensajes gratis por día: 0 a 500."),
     prices: { pro: price(input?.prices?.pro), max: price(input?.prices?.max) }, updatedAt: now()
   };
@@ -104,26 +106,41 @@ async function codeRecord(id) {
   return r.data;
 }
 /** Canjea un código por un pase firmado que el navegador guarda. */
-export async function activate(code) {
+/** Con sesión iniciada, el plan queda en la cuenta (sirve en todos sus dispositivos); sin sesión, en este dispositivo. */
+export async function activate(code, user = null) {
   if (normCode(code).length < 10) fail(400, "bad_code", "Escribí el código completo (CBP-XXXX-XXXX-XXXX).");
   const id = codeId(code);
   const rec = await codeRecord(id);
   if (!rec) fail(403, "bad_code", "Código inválido, vencido o desactivado.");
-  await update("pilot", `codes/${id}`, r => { r.activations = (r.activations || 0) + 1; r.lastUsedAt = now(); return r; });
+  if (rec.userId && rec.userId !== user?.id) fail(409, "code_taken", "Este código ya está vinculado a otra cuenta. Iniciá sesión con esa cuenta.");
+  await update("pilot", `codes/${id}`, r => { r.activations = (r.activations || 0) + 1; r.lastUsedAt = now(); if (user) { r.userId = user.id; r.userEmail = user.email; } return r; });
+  if (user) { await setPlan(user.id, rec.plan, rec.expiresAt, id); return { plan: rec.plan, expiresAt: rec.expiresAt, account: true }; }
   const pass = await sign({ k: "pilot", id, plan: rec.plan, exp: Date.parse(rec.expiresAt) });
   return { pass, plan: rec.plan, expiresAt: rec.expiresAt };
 }
 
-/** Plan del visitante: el del pase si es válido; si no, gratis (identificado por su IP, de forma anónima). */
+/**
+ * Plan del visitante, en este orden: el de su cuenta (si inició sesión), el del pase de este dispositivo,
+ * o gratis (por cuenta si inició sesión; si no, por su IP, de forma anónima).
+ */
 async function resolvePlan(req, ctx, pass) {
+  const user = await currentUser(req);
+  if (user?.blocked) fail(403, "blocked", "Tu cuenta está bloqueada. Escribinos por WhatsApp para ayudarte.");
+  if (user) {
+    let plan = activePlan(user);
+    if (plan !== "gratis" && user.planCodeId && !(await codeRecord(user.planCodeId))) plan = "gratis"; // el dueño desactivó el código
+    if (plan !== "gratis") return { plan, subject: "u-" + user.id, expiresAt: user.planExpiresAt, user, passOk: false };
+  }
+  let passOk = false;
   if (pass) {
     const p = await verify(pass);
     if (p && p.k === "pilot" && PLANS[p.plan]) {
       const rec = await codeRecord(p.id);
-      if (rec) return { plan: rec.plan, subject: "c-" + p.id.slice(0, 32), expiresAt: rec.expiresAt, label: rec.label };
+      if (rec && (!rec.userId || rec.userId === user?.id)) return { plan: rec.plan, subject: "c-" + p.id.slice(0, 32), expiresAt: rec.expiresAt, label: rec.label, user, passOk: true };
     }
   }
-  return { plan: "gratis", subject: "ip-" + sha256("pilot:" + clientIp(req, ctx)).slice(0, 32) };
+  if (user) return { plan: "gratis", subject: "u-" + user.id, user, passOk };
+  return { plan: "gratis", subject: "ip-" + sha256("pilot:" + clientIp(req, ctx)).slice(0, 32), user: null, passOk };
 }
 
 // ---------------- Límites y gasto ----------------
@@ -183,7 +200,8 @@ export async function status(req, ctx, pass) {
   return {
     plan: who.plan, planName: PLANS[who.plan].name, label: PLANS[who.plan].label, expiresAt: who.expiresAt || null,
     perDay: lim.perDay, perMonth: lim.perMonth, usedToday: u.day, usedMonth: u.month, parallel: PLANS[who.plan].parallel,
-    available, reason, passValid: !!pass && who.plan !== "gratis", whatsapp: PLAN_WHATSAPP(),
+    available, reason, passValid: who.passOk, whatsapp: PLAN_WHATSAPP(),
+    user: publicUser(who.user) || null, requireAccount: cfg.requireAccount,
     plans: Object.fromEntries(Object.entries(PLANS).map(([k, p]) => [k, { name: p.name, label: p.label, perDay: k === "gratis" ? cfg.freePerDay : p.perDay, perMonth: p.perMonth, parallel: p.parallel, price: k === "gratis" ? 0 : cfg.prices[k] }]))
   };
 }
@@ -315,7 +333,10 @@ export async function chat(req, ctx, body) {
     const c = await verify(body.cont);
     if (!c || c.k !== "pcont" || !PLANS[c.plan] || !(c.n < MAX_CONT)) fail(403, "bad_cont", "La continuación venció. Pedí la respuesta de nuevo.");
     who = { plan: c.plan, subject: c.s }; counted = false; contN = c.n + 1;
-  } else who = await resolvePlan(req, ctx, body.pass);
+  } else {
+    who = await resolvePlan(req, ctx, body.pass);
+    if (cfg.requireAccount && !who.user) fail(401, "login_required", "Iniciá sesión o creá una cuenta gratis para usar CB Pilot.");
+  }
   const p = PLANS[who.plan];
   budgetGate(who.plan, cfg, await spend());
   const task = body.mode === "task";

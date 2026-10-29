@@ -4,6 +4,7 @@ import { adminExists, setupAdmin, login, logoutCookie, requireAdmin, changePassw
 import { status, activate, chat, adminOverview, savePilotConfig, createCode, revokeCode, keyConfigured } from "../lib/pilot.mjs";
 import { audit, recent } from "../lib/log.mjs";
 import * as kb from "../lib/knowledge.mjs";
+import * as users from "../lib/users.mjs";
 import { json, errorResponse, readJSON, fail, rateLimit, sameOrigin, str, now } from "../lib/util.mjs";
 
 export const config = { path: "/api/*" };
@@ -20,7 +21,7 @@ const routes = {
   "POST /api/pilot/activate": async (req, ctx) => {
     if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
     await rateLimit(req, ctx, "pilot-activate", 10, 900);
-    const r = await activate((await readJSON(req)).code);
+    const r = await activate((await readJSON(req)).code, await users.currentUser(req));
     await audit("cliente", "pilot_activated", r.plan);
     return json({ ok: true, ...r });
   },
@@ -29,6 +30,43 @@ const routes = {
     if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
     await rateLimit(req, ctx, "pilot-chat", 40, 60);
     return chat(req, ctx, await readJSON(req, 6 * 1024 * 1024)); // incluye fotos y archivos adjuntos
+  },
+
+  // ---------------- Cuentas de clientes ----------------
+  "POST /api/account/register": async (req, ctx) => {
+    if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
+    await rateLimit(req, ctx, "register", 5, 3600);
+    const r = await users.register(await readJSON(req));
+    await audit(r.user.email, "account_created", r.user.id);
+    return json({ ok: true, user: users.publicUser(r.user) }, 200, { "Set-Cookie": r.cookie });
+  },
+  "POST /api/account/login": async (req, ctx) => {
+    if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
+    await rateLimit(req, ctx, "user-login", 10, 900);
+    const r = await users.login(await readJSON(req));
+    return json({ ok: true, user: users.publicUser(r.user) }, 200, { "Set-Cookie": r.cookie });
+  },
+  "POST /api/account/logout": async () => json({ ok: true }, 200, { "Set-Cookie": users.logoutCookie() }),
+  "GET /api/account/me": async req => json({ ok: true, user: users.publicUser(await users.currentUser(req)) || null }),
+  "POST /api/account/profile": async req => {
+    if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
+    const u = await users.updateProfile(await users.requireUser(req), await readJSON(req));
+    return json({ ok: true, user: users.publicUser(u) });
+  },
+  "POST /api/account/password": async (req, ctx) => {
+    if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
+    await rateLimit(req, ctx, "user-password", 5, 900);
+    const b = await readJSON(req);
+    const r = await users.changePassword(await users.requireUser(req), b.current, b.next);
+    return json({ ok: true }, 200, { "Set-Cookie": r.cookie });
+  },
+  "POST /api/account/delete": async (req, ctx) => {
+    if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
+    await rateLimit(req, ctx, "user-delete", 5, 900);
+    const u = await users.requireUser(req);
+    await users.deleteAccount(u, (await readJSON(req)).password);
+    await audit(u.email, "account_deleted", u.id);
+    return json({ ok: true }, 200, { "Set-Cookie": users.logoutCookie() });
   },
 
   // ---------------- Administración ----------------
@@ -75,6 +113,17 @@ const routes = {
     await audit(admin.email, "pilot_code_created", r.record.id.slice(0, 12), { plan: r.record.plan, label: r.record.label });
     return json({ ok: true, code: r.code, record: r.record });
   },
+  // ---------------- Usuarios (panel) ----------------
+  "GET /api/admin/users": async req => { await requireAdmin(req); return json({ ok: true, users: await users.listUsers() }); },
+  "POST /api/admin/users/action": async req => {
+    if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
+    const admin = await requireAdmin(req);
+    const b = await readJSON(req);
+    const r = await users.adminAction(b.id, str(b.action, 20), { plan: b.plan, days: b.days });
+    await audit(admin.email, `user_${str(b.action, 20)}`, str(b.id, 40), b.action === "plan" ? { plan: b.plan, days: b.days } : {});
+    return json({ ok: true, user: r.user ? users.publicUser(r.user) : null, tempPassword: r.tempPassword || null });
+  },
+
   // ---------------- Base de conocimiento ----------------
   "GET /api/admin/knowledge": async req => { await requireAdmin(req); return json({ ok: true, ...(await kb.stats()) }); },
   "GET /api/admin/knowledge/source": async req => { await requireAdmin(req); return json({ ok: true, ...(await kb.preview(str(new URL(req.url).searchParams.get("id"), 40))) }); },

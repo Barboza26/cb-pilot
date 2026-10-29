@@ -19,7 +19,8 @@ Funciona con modelos Claude de Anthropic. Cuando alguien necesita una página we
 | Historial | Buscar, fijar, renombrar y eliminar. Se guarda **solo en el dispositivo** del usuario. |
 | Planes | Gratis (Claude Haiku 5.5), Pro (Claude Sonnet 5.5) y Max (Claude Opus 5.5), con códigos de acceso que crea el dueño. El usuario ve su uso como **porcentaje** del día (y del mes en los planes pagos), no como cantidad de mensajes. |
 | **Base de conocimiento** | Desde el panel le das enlaces, archivos (PDF, TXT, MD, CSV, JSON, HTML) o textos. CB Pilot los consulta antes de responder y muestra «Fuentes consultadas» bajo la respuesta. Cuanto más agregás, más sabe. |
-| Panel `/admin/` | Gasto del mes contra el presupuesto, mensajes por plan y por día, pausa inmediata, precios, códigos, base de conocimiento y auditoría. |
+| **Cuentas de clientes** | Crear cuenta e iniciar sesión con correo y contraseña. El plan queda en la cuenta y sirve en todos sus dispositivos. «Mi cuenta»: perfil, plan, uso, cambiar contraseña (cierra las otras sesiones) y eliminar la cuenta. Se puede usar sin cuenta, o exigirla desde el panel. |
+| Panel `/admin/` | Gasto del mes contra el presupuesto, mensajes por plan y por día, pausa inmediata, precios, códigos, **usuarios** (dar o quitar plan sin código, bloquear, contraseña temporal, eliminar), base de conocimiento y auditoría. |
 | Presupuesto | Tope mensual (US$25 por defecto); el plan gratis se pausa al 70 % para reservar el resto a quienes pagan. |
 | Idiomas | Español e inglés (detecta el idioma del navegador). |
 | Celular | Historial deslizable, vista previa a pantalla completa, instalable como app. |
@@ -45,6 +46,10 @@ Funciona con modelos Claude de Anthropic. Cuando alguien necesita una página we
 Cada pull request genera una vista previa aislada: sus datos van a almacenes `preview-*`, separados de producción.
 
 ## Vender un plan
+
+**Con cuenta (recomendado):** el cliente crea su cuenta en CB Pilot y te paga por SINPE. En `/admin/` → **Usuarios** → buscás su correo → **Gestionar** → **Dar plan** (Pro o Max y los días). Listo: le aparece en todos sus dispositivos. Si ya tenía ese plan, los días se suman.
+
+**Con código (sin cuenta, o para regalar):**
 
 1. El cliente toca «Quiero Pro» (abre WhatsApp) y paga por SINPE.
 2. `/admin/` → **Crear código**: plan, días de vigencia (30) y nombre del cliente.
@@ -99,6 +104,7 @@ Con `ANTHROPIC_API_KEY=sk-ant-… ADMIN_SETUP_CODE=codigo-local-123 node tests/s
 | Base de conocimiento (lectura de páginas y PDF, fragmentos, búsqueda) | `netlify/lib/knowledge.mjs` |
 | Rutas de la API | `netlify/functions/api.mjs` |
 | Acceso del panel, base de datos y utilidades | `netlify/lib/admin.mjs`, `db.mjs`, `util.mjs`, `log.mjs` |
+| Cuentas de clientes (registro, sesión, plan en la cuenta) | `netlify/lib/users.mjs` |
 | La app | `public/index.html`, `public/assets/js/pilot.js`, `public/assets/css/pilot.css` |
 | Base compartida (idioma, estilos) | `public/assets/js/core.js`, `public/assets/css/base.css` |
 | Panel | `public/admin/index.html`, `public/assets/js/admin.js`, `public/assets/css/admin.css` |
