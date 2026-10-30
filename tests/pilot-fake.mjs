@@ -24,7 +24,7 @@ a.btn{display:inline-block;background:#25D366;color:#062e16;padding:.9rem 1.4rem
 
 Si te gusta, en CeBe Studio la convertimos en tu web real. [Hablar por WhatsApp](https://wa.me/50689337817?text=Hola%2C%20quiero%20mi%20web)`;
 
-const GENERAL = `## ¡Hola! Soy CB Pilot 👋
+const GENERAL = `## ¡Hola! Soy CeBe Pilot 👋
 
 Estoy en **modo de prueba** (respuesta simulada, sin IA real). Así se ven mis respuestas:
 

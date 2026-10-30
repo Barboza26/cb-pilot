@@ -1,4 +1,4 @@
-// Servidor local para probar CB Pilot SIN tocar Netlify: estáticos (public/) + API con base de datos en memoria.
+// Servidor local para probar CeBe Pilot SIN tocar Netlify: estáticos (public/) + API con base de datos en memoria.
 // Uso: ADMIN_SETUP_CODE=codigo-local-123 node tests/servidor-local.mjs [puerto]
 // Sin gastar: PILOT_FAKE=1 usa respuestas simuladas (o simplemente: npm run dev). Con ANTHROPIC_API_KEY usa la IA real.
 import http from "node:http";
@@ -20,7 +20,7 @@ http.createServer(async (req, res) => {
     const r = await handler(new Request(url, { method: req.method, headers: req.headers, body }), { ip: req.socket.remoteAddress });
     const h = Object.fromEntries(r.headers); if (h["set-cookie"]) h["set-cookie"] = h["set-cookie"].replace("; Secure", "");
     res.writeHead(r.status, h);
-    if (r.body && (h["content-type"] || "").includes("ndjson")) { for await (const chunk of r.body) res.write(chunk); res.end(); return; } // streaming de CB Pilot
+    if (r.body && (h["content-type"] || "").includes("ndjson")) { for await (const chunk of r.body) res.write(chunk); res.end(); return; } // streaming de CeBe Pilot
     res.end(Buffer.from(await r.arrayBuffer())); return;
   }
   let p = path.join(ROOT, decodeURIComponent(url.pathname));

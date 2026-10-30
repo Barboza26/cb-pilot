@@ -1,4 +1,6 @@
-# CB Pilot
+# CeBe Pilot · La IA de Costa Rica 🇨🇷
+
+Con **Pilo**, la lapa roja copiloto. Habla tico (o neutro, o formal), conoce el país y ayuda a los negocios de aquí. Plan completo por fases: **`HOJA-DE-RUTA.md`**.
 
 Asistente de inteligencia artificial independiente, al estilo de ChatGPT, Gemini o Claude: chat en vivo, varios chats respondiendo a la vez, **Modo Tareas** en paralelo, vista previa de diseños HTML y planes Gratis / Pro / Max con códigos de acceso.
 
@@ -12,13 +14,14 @@ Funciona con modelos Claude de Anthropic. Cuando alguien necesita una página we
 |---|---|
 | Chat en vivo | La respuesta aparece mientras se escribe; detener, copiar, regenerar, editar, 👍/👎. Las respuestas largas (como una página completa) salen enteras: si son muy largas, siguen solas en varios tramos sin tocar nada. |
 | Caja de texto completa | Adjuntar fotos, PDF y archivos de texto o código (también arrastrando o pegando), dictado por voz (Chrome y Edge; Brave lo bloquea), modo **Rápido / Detallado** y **asistentes**: General, Diseñador web, Programador, Marketing y redes, Profe y Redactor. |
-| Apariencia | Tema oscuro, claro o «igual que el sistema», y 5 colores de acento (azul, morado, verde, naranja, rosa). Se recuerda en cada dispositivo. |
+| Identidad tica | Pilo animado (pestañea, saluda, aletea mientras piensa); despegue al abrir; fondo vivo que se intensifica mientras piensa; cabina con **combustible** (uso que queda hoy) y modos **Crucero / Turbo**; **Torre de control** para las tareas (en pista, en vuelo, aterrizó) con **rutas** de lugares ticos; forma de hablar: tico, neutro o formal. |
+| Apariencia | Tema oscuro, claro o «igual que el sistema», y 5 **paletas ticas**: Bandera, Selva, Volcán Arenal, Caribe y Atardecer Pacífico. Se recuerda en cada dispositivo. |
 | Varios chats a la vez | Un chat sigue respondiendo mientras escribís en otro (punto azul en el historial). |
 | Modo Tareas | Varias tareas (una por línea) resueltas en paralelo, con paquetes listos. Cada tarjeta se copia o se abre como chat. |
 | Vista previa | Las landings y diseños HTML se ven en vivo (escritorio o celular) y se descargan. Aislada, sin scripts. |
 | Historial | Buscar, fijar, renombrar y eliminar. Se guarda **solo en el dispositivo** del usuario. |
 | Planes | Gratis (Claude Haiku 5.5), Pro (Claude Sonnet 5.5) y Max (Claude Opus 5.5), con códigos de acceso que crea el dueño. El usuario ve su uso como **porcentaje** del día (y del mes en los planes pagos), no como cantidad de mensajes. |
-| **Base de conocimiento** | Desde el panel le das enlaces, archivos (PDF, TXT, MD, CSV, JSON, HTML) o textos. CB Pilot los consulta antes de responder y muestra «Fuentes consultadas» bajo la respuesta. Cuanto más agregás, más sabe. |
+| **Base de conocimiento** | Desde el panel le das enlaces, archivos (PDF, TXT, MD, CSV, JSON, HTML) o textos. CeBe Pilot los consulta antes de responder y muestra «Fuentes consultadas» bajo la respuesta. Cuanto más agregás, más sabe. |
 | **Cuentas de clientes** | Crear cuenta e iniciar sesión con correo y contraseña. El plan queda en la cuenta y sirve en todos sus dispositivos. «Mi cuenta»: perfil, plan, uso, cambiar contraseña (cierra las otras sesiones) y eliminar la cuenta. Se puede usar sin cuenta, o exigirla desde el panel. |
 | Panel `/admin/` | Gasto del mes contra el presupuesto, mensajes por plan y por día, pausa inmediata, precios, códigos, **usuarios** (dar o quitar plan sin código, bloquear, contraseña temporal, eliminar), base de conocimiento y auditoría. |
 | Presupuesto | Tope mensual (US$25 por defecto); el plan gratis se pausa al 70 % para reservar el resto a quienes pagan. |
@@ -41,20 +44,20 @@ Funciona con modelos Claude de Anthropic. Cuando alguien necesita una página we
 
 3. **Anthropic:** en la consola cargá saldo y poné un **límite de gasto mensual** (Settings → Limits). Es el doble seguro del presupuesto del panel.
 4. Volvé a publicar, entrá a `/admin/`, creá tu usuario con el `ADMIN_SETUP_CODE` y revisá presupuesto y precios.
-5. **Dominio (opcional):** Domain management → agregá el dominio de CB Pilot. Después, en el sitio de CeBe Studio, poné esa dirección en `assets/js/cebe-config.js` → `pilotUrl`.
+5. **Dominio (opcional):** Domain management → agregá el dominio de CeBe Pilot. Después, en el sitio de CeBe Studio, poné esa dirección en `assets/js/cebe-config.js` → `pilotUrl`.
 
 Cada pull request genera una vista previa aislada: sus datos van a almacenes `preview-*`, separados de producción.
 
 ## Vender un plan
 
-**Con cuenta (recomendado):** el cliente crea su cuenta en CB Pilot y te paga por SINPE. En `/admin/` → **Usuarios** → buscás su correo → **Gestionar** → **Dar plan** (Pro o Max y los días). Listo: le aparece en todos sus dispositivos. Si ya tenía ese plan, los días se suman.
+**Con cuenta (recomendado):** el cliente crea su cuenta en CeBe Pilot y te paga por SINPE. En `/admin/` → **Usuarios** → buscás su correo → **Gestionar** → **Dar plan** (Pro o Max y los días). Listo: le aparece en todos sus dispositivos. Si ya tenía ese plan, los días se suman.
 
 **Con código (sin cuenta, o para regalar):**
 
 1. El cliente toca «Quiero Pro» (abre WhatsApp) y paga por SINPE.
 2. `/admin/` → **Crear código**: plan, días de vigencia (30) y nombre del cliente.
 3. «Copiar mensaje para el cliente» y pegáselo por WhatsApp. El código se muestra **una sola vez** (el servidor guarda solo una huella).
-4. El cliente lo activa en CB Pilot → Planes. «Desactivar» le quita el acceso al instante.
+4. El cliente lo activa en CeBe Pilot → Planes. «Desactivar» le quita el acceso al instante.
 
 ## Enseñarle cosas nuevas (base de conocimiento)
 
@@ -74,7 +77,7 @@ Cómo la usa: mientras la base sea chica (hasta ~24 000 caracteres) se le da com
 
 1. Instalá **Node.js** (versión LTS) desde https://nodejs.org/es/download, una sola vez.
 2. Descargá este proyecto: en GitHub → botón verde **Code → Download ZIP**, y descomprimilo en el Escritorio.
-3. Doble clic en **`ABRIR-CB-PILOT.bat`**. Se abre el navegador con CB Pilot.
+3. Doble clic en **`ABRIR-CB-PILOT.bat`**. Se abre el navegador con CeBe Pilot.
    - Si tocás ENTER sin escribir nada, responde con textos **simulados** (no gasta).
    - Si pegás tu clave de Anthropic, usa la **IA real**.
    - Panel: http://localhost:8899/admin/ con el código `codigo-local-123`.
@@ -92,7 +95,7 @@ Con `ANTHROPIC_API_KEY=sk-ant-… ADMIN_SETUP_CODE=codigo-local-123 node tests/s
 
 ## Límites técnicos
 
-- **Netlify corta las respuestas en vivo a los ~10 s.** CB Pilot corta a los 8,5 s y pide la continuación sola; el usuario ve la respuesta completa y la continuación no cuenta como mensaje nuevo. Si tu plan de Netlify permite más, subí `PILOT_DEADLINE_MS`.
+- **Netlify corta las respuestas en vivo a los ~10 s.** CeBe Pilot corta a los 8,5 s y pide la continuación sola; el usuario ve la respuesta completa y la continuación no cuenta como mensaje nuevo. Si tu plan de Netlify permite más, subí `PILOT_DEADLINE_MS`.
 - El límite gratis es por conexión (IP): personas en la misma red wifi lo comparten.
 - Los chats viven en el navegador: si el usuario borra los datos del sitio, los pierde.
 

@@ -1,4 +1,4 @@
-// CB Pilot: asistente de inteligencia artificial independiente (chat tipo ChatGPT/Gemini/Claude).
+// CeBe Pilot: asistente de inteligencia artificial independiente (chat tipo ChatGPT/Gemini/Claude).
 // Planes, límites, presupuesto mensual, códigos de acceso y conversación con Claude en streaming.
 // La clave ANTHROPIC_API_KEY vive SOLO en el servidor (variable de entorno de Netlify); el navegador nunca la ve.
 import Anthropic from "@anthropic-ai/sdk";
@@ -157,10 +157,10 @@ export async function spend() {
   return r?.data || { usd: 0, msgs: 0, in: 0, out: 0, plans: {} };
 }
 function budgetGate(plan, cfg, s) {
-  if (!cfg.enabled) fail(503, "pilot_paused", "CB Pilot está en mantenimiento. Volvé en un rato.");
-  if (!keyConfigured()) fail(503, "pilot_off", "CB Pilot todavía no está activado en este sitio.");
-  if (s.usd >= cfg.budgetUsd) fail(503, "budget", "CB Pilot alcanzó su límite de uso de este mes. Escribinos por WhatsApp y te ayudamos.");
-  if (plan === "gratis" && s.usd >= cfg.budgetUsd * cfg.freeShare) fail(503, "free_paused", "El plan gratis llegó a su límite este mes. Con un plan Pro o Max seguís usando CB Pilot.");
+  if (!cfg.enabled) fail(503, "pilot_paused", "CeBe Pilot está en mantenimiento. Volvé en un rato.");
+  if (!keyConfigured()) fail(503, "pilot_off", "CeBe Pilot todavía no está activado en este sitio.");
+  if (s.usd >= cfg.budgetUsd) fail(503, "budget", "CeBe Pilot alcanzó su límite de uso de este mes. Escribinos por WhatsApp y te ayudamos.");
+  if (plan === "gratis" && s.usd >= cfg.budgetUsd * cfg.freeShare) fail(503, "free_paused", "El plan gratis llegó a su límite este mes. Con un plan Pro o Max seguís usando CeBe Pilot.");
 }
 async function reserve(subject, lim) {
   const fn = (max, msg) => cur => { const n = (cur?.n || 0) + 1; if (max !== null && n > max) fail(429, "quota", msg); return { n }; };
@@ -210,7 +210,7 @@ export async function status(req, ctx, pass) {
 // Para cambiar la personalidad o lo que Pilot sabe de CeBe Studio, editá PERSONA y CEBE (sin tocar el resto).
 const fmt = n => "₡" + Number(n).toLocaleString("es-CR");
 
-// CeBe Studio es un estudio aparte: CB Pilot lo recomienda SOLO cuando alguien necesita una web.
+// CeBe Studio es un estudio aparte: CeBe Pilot lo recomienda SOLO cuando alguien necesita una web.
 // Datos copiados de cebestudiocr.com (precios aprobados el 17/10/2026). Si cambian allá, actualizalos aquí.
 const CEBE = {
   whatsapp: "50689337817", site: "https://cebestudiocr.com",
@@ -226,12 +226,15 @@ const CEBE = {
 };
 const PLAN_WHATSAPP = () => (process.env.PILOT_WHATSAPP || CEBE.whatsapp).replace(/\D/g, "");
 
-const PERSONA = () => `Sos CB Pilot, un asistente de inteligencia artificial independiente hecho en Costa Rica.
+const PERSONA = () => `Sos Pilo, el copiloto de CeBe Pilot: la IA de Costa Rica 🇨🇷. Tu imagen es una lapa roja con gafas de aviador.
 
 # Cómo sos
 - Un asistente general excelente, como los mejores chats de IA: ayudás a escribir, programar, analizar, resumir, traducir, planear, estudiar, crear ideas y resolver problemas de cualquier tema.
-- Respondés en el idioma del usuario y con su mismo trato (si usa "vos", usás "vos"; si usa "tú" o "usted", igual). Tono cercano, claro y profesional.
-- Si te preguntan qué modelo sos: sos CB Pilot y funcionás con modelos Claude de Anthropic. Nunca digas que sos ChatGPT, Gemini u otro producto.
+- Sos tico de corazón: conocés la cultura, los lugares, las comidas, las costumbres y la forma de hablar de Costa Rica, y lo usás con naturalidad cuando suma (ejemplos locales, referencias a provincias, ferias, sodas, playas, volcanes), sin forzarlo ni caer en clichés.
+- Pensás en los negocios y emprendedores de aquí: cuando hablen de plata usá colones (₡) salvo que pidan otra moneda, y considerá SINPE Móvil, WhatsApp y las redes que más se usan en el país.
+- En trámites y leyes de Costa Rica (Hacienda, facturación electrónica, CCSS, permisos, municipalidades) orientá con claridad, pero aclarás que pueden cambiar y recomendás confirmar en la fuente oficial o con un profesional.
+- Respondés en el idioma del usuario. Con turistas o en inglés, sos igual de amable.
+- Si te preguntan qué modelo sos: sos Pilo, de CeBe Pilot, y funcionás con modelos Claude de Anthropic. Nunca digas que sos ChatGPT, Gemini u otro producto.
 
 # Formato
 - Usá Markdown: títulos cortos, listas, tablas y negritas cuando ayuden. Párrafos breves, fáciles de leer en celular.
@@ -241,13 +244,13 @@ const PERSONA = () => `Sos CB Pilot, un asistente de inteligencia artificial ind
 - No inventes datos. Si no sabés algo o puede haber cambiado (precios de terceros, noticias recientes), decilo.
 
 # Recomendación de CeBe Studio (solo cuando aplique)
-CeBe Studio es un estudio de diseño y desarrollo web de Costa Rica, aliado de CB Pilot. Recomendalo con naturalidad SOLO cuando el usuario quiera una página web, tienda en línea, landing o presencia digital profesional para un negocio (por ejemplo, después de mostrarle una vista previa). En cualquier otro tema no lo menciones. No inventes precios ni promociones: usá solo estos datos.
+CeBe Studio es un estudio de diseño y desarrollo web de Costa Rica, aliado de CeBe Pilot. Recomendalo con naturalidad SOLO cuando el usuario quiera una página web, tienda en línea, landing o presencia digital profesional para un negocio (por ejemplo, después de mostrarle una vista previa). En cualquier otro tema no lo menciones. No inventes precios ni promociones: usá solo estos datos.
 - Sitio: ${CEBE.site} · Demos: ${CEBE.site}/demos/ · Tienda: ${CEBE.site}/tienda/ · Cotizar proyectos a medida: ${CEBE.site}/#contacto
 - WhatsApp de CeBe Studio: [Hablar con CeBe Studio](https://wa.me/${CEBE.whatsapp}?text=TEXTO), con TEXTO codificado para URL que resuma lo que necesita.
 - 12 demos de sitios web, cada una en dos versiones: adaptada al negocio (total ${fmt(CEBE.adapt)}, anticipo del ${CEBE.deposit} %: ${fmt(CEBE.adapt * CEBE.deposit / 100)}) o exclusiva, que se vende una sola vez (total ${fmt(CEBE.exclusive)}, anticipo ${fmt(CEBE.exclusive * CEBE.deposit / 100)}). Incluyen diseño con la marca del cliente, una página con hasta 5 secciones adaptada a celular, botón de WhatsApp, 2 rondas de revisión y 7 días de soporte; dominio y hosting aparte. La disponibilidad de las exclusivas se confirma en la tienda.
 ${CEBE.demos.map(([slug, code, name, rubro]) => `  - ${code} ${name} (${rubro}): ver ${CEBE.site}/mini-proyectos/${slug}/ · comprar ${CEBE.site}/tienda/producto/?id=demo-${slug}`).join("\n")}
 
-# Planes de CB Pilot
+# Planes de CeBe Pilot
 Gratis (mensajes limitados por día), Pro y Max (más mensajes, modelos más potentes y más tareas en paralelo). Se activan con un código que se entrega al confirmar el pago; para comprarlos, el usuario toca "Planes" en la interfaz o escribe a https://wa.me/${PLAN_WHATSAPP()}.
 
 # Límites
@@ -271,8 +274,14 @@ Sos un profesor paciente y claro. Explicá paso a paso con ejemplos de la vida d
   writer: `# Asistente: Redactor
 Sos redactor profesional (copywriting, correos, artículos, guiones). Escribí textos claros, con buen ritmo y el tono que pida el usuario; ofrecé una versión principal y, si aplica, una alternativa más corta.`
 };
-const DETAILED = "# Modo detallado\nEl usuario eligió respuestas detalladas: profundizá, cubrí todos los puntos importantes, usá ejemplos y estructura clara.";
-const QUICK = "# Modo rápido\nEl usuario eligió respuestas rápidas: andá al grano y sé conciso, salvo que pida algo largo (una página, un documento o código completo), que siempre va entero.";
+const DETAILED = "# Modo Turbo\nEl usuario eligió respuestas detalladas: profundizá, cubrí todos los puntos importantes, usá ejemplos y estructura clara.";
+const QUICK = "# Modo Crucero\nEl usuario eligió respuestas rápidas: andá al grano y sé conciso, salvo que pida algo largo (una página, un documento o código completo), que siempre va entero.";
+// Forma de hablar (la elige el usuario; por defecto, tico amigable).
+const HABLA = {
+  tico: "# Forma de hablar: tico amigable\nHablá como un tico cercano: usá \"vos\" (o \"usted\" si el usuario lo usa), con expresiones ticas naturales y con moderación (pura vida, diay, tuanis, mae solo en confianza, qué chiva, al chile), sin exagerar ni repetirlas. Seguí siendo claro y profesional.",
+  neutro: "# Forma de hablar: neutra\nUsá español neutro, entendible en toda Latinoamérica, tratando de \"tú\". Sin modismos regionales.",
+  formal: "# Forma de hablar: formal\nUsá un tono formal y respetuoso, tratando de \"usted\". Sin modismos ni emojis."
+};
 
 // Archivos adjuntos del último mensaje: fotos, PDF y archivos de texto o código (leídos en el navegador).
 const IMG = /^image\/(jpeg|png|webp|gif)$/;
@@ -335,7 +344,7 @@ export async function chat(req, ctx, body) {
     who = { plan: c.plan, subject: c.s }; counted = false; contN = c.n + 1;
   } else {
     who = await resolvePlan(req, ctx, body.pass);
-    if (cfg.requireAccount && !who.user) fail(401, "login_required", "Iniciá sesión o creá una cuenta gratis para usar CB Pilot.");
+    if (cfg.requireAccount && !who.user) fail(401, "login_required", "Iniciá sesión o creá una cuenta gratis para usar CeBe Pilot.");
   }
   const p = PLANS[who.plan];
   budgetGate(who.plan, cfg, await spend());
@@ -358,7 +367,7 @@ export async function chat(req, ctx, body) {
   if (kb?.cacheable) system.push({ type: "text", text: kb.text, cache_control: { type: "ephemeral" } });
   else { system[0].cache_control = { type: "ephemeral" }; if (kb) system.push({ type: "text", text: kb.text }); }
   if (ASSISTANTS[assistant]) system.push({ type: "text", text: ASSISTANTS[assistant] });
-  system.push({ type: "text", text: task ? TASK_MODE : detailed ? DETAILED : QUICK });
+  system.push({ type: "text", text: (task ? TASK_MODE : detailed ? DETAILED : QUICK) + "\n\n" + (HABLA[body.habla] || HABLA.tico) });
   const params = { model: p.model, max_tokens: p.maxTokens, system, messages, output_config: { effort: task ? p.taskEffort : detailed ? p.detailEffort : p.effort } };
   if (p.thinking) params.thinking = p.thinking;
 
@@ -396,7 +405,7 @@ export async function chat(req, ctx, body) {
           const code = e instanceof Anthropic.RateLimitError ? "busy" : e instanceof Anthropic.AuthenticationError ? "pilot_off" : e instanceof Anthropic.APIConnectionError ? "network" : "upstream";
           if (code === "pilot_off" || code === "upstream") console.error("[pilot] error de la API", e?.status, e?.message);
           if (counted && !text) await refund(who.subject);
-          send({ t: "error", code, message: code === "busy" ? "CB Pilot está muy solicitado en este momento. Intentá de nuevo en unos segundos." : "No pude responder esta vez. Intentá de nuevo." });
+          send({ t: "error", code, message: code === "busy" ? "CeBe Pilot está muy solicitado en este momento. Intentá de nuevo en unos segundos." : "No pude responder esta vez. Intentá de nuevo." });
         }
       } finally { clearTimeout(timer); }
       if (cut && !u.out) u.out = Math.ceil(text.length / 3.5); // corte por tiempo: se estima lo generado

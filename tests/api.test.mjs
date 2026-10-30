@@ -1,4 +1,4 @@
-// Pruebas de la API de CB Pilot con base de datos en memoria y una IA simulada (no gasta dinero ni usa internet).
+// Pruebas de la API de CeBe Pilot con base de datos en memoria y una IA simulada (no gasta dinero ni usa internet).
 import { test, before } from "node:test";
 import assert from "node:assert/strict";
 import { setStoreFactory, memoryFactory, putJSON } from "../netlify/lib/db.mjs";
@@ -40,7 +40,7 @@ test("salud y rutas desconocidas", async () => {
   assert.equal((await call("GET", "/api/nada")).status, 404);
 });
 
-test("sin ANTHROPIC_API_KEY, CB Pilot avisa que no está activado y no cobra mensajes", async () => {
+test("sin ANTHROPIC_API_KEY, CeBe Pilot avisa que no está activado y no cobra mensajes", async () => {
   const s = await call("POST", "/api/pilot/status", {});
   assert.equal(s.status, 200);
   assert.equal(s.data.plan, "gratis");
@@ -58,14 +58,14 @@ test("responde en streaming con el modelo del plan gratis y descuenta un mensaje
   const r = await call("POST", "/api/pilot/chat", user("Hola, ¿qué podés hacer?"), { ip: "10.1.0.2" });
   assert.equal(r.status, 200);
   assert.equal(r.events[0].t, "start");
-  assert.match(r.text, /CB Pilot/);
+  assert.match(r.text, /CeBe Pilot/);
   assert.equal(r.done.stop, "end_turn");
   assert.equal(r.done.cont, null);
   assert.equal(r.done.remaining, DEFAULT_CONFIG.freePerDay - 1);
   const p = fake.calls.at(-1);
   assert.equal(p.model, "claude-haiku-5-5");
   assert.equal(p.betas, undefined, "Haiku no usa el parámetro fallbacks");
-  assert.match(p.system[0].text, /CB Pilot/);
+  assert.match(p.system[0].text, /CeBe Pilot/);
   assert.match(p.system[0].text, /CeBe Studio/, "sabe recomendar a CeBe Studio cuando aplique");
   assert.ok(p.system[0].cache_control);
 });
@@ -170,11 +170,13 @@ test("asistentes, modo detallado y archivos adjuntos", async () => {
   await call("POST", "/api/pilot/chat", { ...user("Haceme una landing"), assistant: "web", style: "detallado" }, { ip: "10.1.0.20" });
   let p = fake.calls.at(-1);
   assert.ok(p.system.some(b => /Diseñador web/.test(b.text)));
-  assert.ok(p.system.some(b => /Modo detallado/.test(b.text)));
+  assert.ok(p.system.some(b => /Modo Turbo/.test(b.text)));
+  assert.ok(p.system.some(b => /tico amigable/.test(b.text)), "habla tico por defecto");
   assert.equal(p.output_config.effort, "medium");
-  await call("POST", "/api/pilot/chat", { ...user("hola"), assistant: "inventado" }, { ip: "10.1.0.21" });
+  await call("POST", "/api/pilot/chat", { ...user("hola"), assistant: "inventado", habla: "formal" }, { ip: "10.1.0.21" });
+  assert.ok(fake.calls.at(-1).system.some(b => /Forma de hablar: formal/.test(b.text)));
   p = fake.calls.at(-1);
-  assert.ok(p.system.some(b => /Modo rápido/.test(b.text)));
+  assert.ok(p.system.some(b => /Modo Crucero/.test(b.text)));
   assert.ok(!p.system.some(b => /# Asistente/.test(b.text)), "un asistente desconocido se ignora");
   const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString("base64");
   const r = await call("POST", "/api/pilot/chat", { ...user("¿Qué ves?"), attachments: [{ kind: "image", name: "foto.jpg", media: "image/jpeg", data: png }, { kind: "text", name: "notas.md", text: "Lista de precios" }, { kind: "pdf", name: "doc.pdf", data: png }] }, { ip: "10.1.0.22" });

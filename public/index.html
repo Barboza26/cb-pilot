@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>CB Pilot · Tu asistente de inteligencia artificial</title>
-<meta name="description" content="CB Pilot es un asistente de inteligencia artificial: chatea, escribe, programa, diseña páginas con vista previa y resuelve varias tareas al mismo tiempo.">
+<title>CeBe Pilot · La IA de Costa Rica</title>
+<meta name="description" content="CeBe Pilot es la IA de Costa Rica: habla tico, conoce el país y ayuda a tu negocio. Chatea, escribe, programa, diseña páginas con vista previa y resuelve varias tareas al mismo tiempo.">
 <meta name="theme-color" content="#070D1C">
-<meta property="og:title" content="CB Pilot · Tu asistente de inteligencia artificial">
+<meta property="og:title" content="CeBe Pilot · La IA de Costa Rica">
 <meta property="og:description" content="Chatea, escribe, programa, diseña y resuelve varias tareas al mismo tiempo.">
 <meta property="og:type" content="website">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -21,11 +21,12 @@
 <script src="/assets/js/pilot.js" defer></script>
 </head>
 <body class="pilot-body">
+<div class="pl-splash" id="pl-splash" aria-hidden="true"><img src="/assets/img/pilo.svg" alt=""><b>CeBe Pilot</b><span>La IA de Costa Rica</span><i></i></div>
 <a class="skip" href="#pl-input" data-i18n="skip">Saltar al chat</a>
 <main id="main">
 <div class="pilot" id="pilot">
  <aside class="pl-side" id="pl-side" aria-label="Conversaciones">
-  <div class="pl-brand"><a class="logo" href="/" aria-label="CB Pilot, inicio"><span class="logo-orb" aria-hidden="true"><span>CB</span></span>CB Pilot</a></div>
+  <div class="pl-brand"><a class="logo" href="/" aria-label="CeBe Pilot, inicio"><img class="logo-pilo" src="/assets/img/pilo.svg" alt="" width="36" height="36">CeBe Pilot</a></div>
   <div class="pl-side-top">
    <button type="button" class="pl-new" id="pl-new"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span data-i18n="pl.new">Nuevo chat</span></button>
    <button type="button" class="pl-icon pl-only-m" id="pl-side-close" aria-label="Cerrar panel" data-i18n-attr="aria-label:pl.closePanel"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
@@ -41,10 +42,10 @@
   <p class="pl-legal"><a href="/privacidad/" data-i18n="pl.privacy">Privacidad</a> · <a href="/terminos/" data-i18n="pl.terms">Términos</a></p>
  </aside>
  <div class="pl-scrim" id="pl-scrim" hidden></div>
- <section class="pl-main" aria-label="CB Pilot">
+ <section class="pl-main" aria-label="CeBe Pilot">
   <div class="pl-top">
    <button type="button" class="pl-icon pl-only-m" id="pl-side-open" aria-label="Abrir historial" data-i18n-attr="aria-label:pl.openPanel"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
-   <h1 class="pl-title" id="pl-title">CB Pilot</h1>
+   <h1 class="pl-title" id="pl-title">CeBe Pilot</h1>
    <span class="pl-model" id="pl-model">Pilot Flash</span>
    <div class="lang" role="group" aria-label="Idioma"><button type="button" data-lang="es" aria-pressed="true" lang="es">ES</button><button type="button" data-lang="en" aria-pressed="false" lang="en">EN</button></div>
    <button type="button" class="pl-icon" id="pl-theme-btn" aria-haspopup="menu" aria-expanded="false" aria-label="Apariencia" title="Apariencia" data-i18n-attr="aria-label:pl.look"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2a10 10 0 0 0 0 20c1.1 0 1.8-.9 1.8-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H17a5 5 0 0 0 5-5C22 6 17.5 2 12 2z"/></svg></button>
@@ -54,8 +55,8 @@
    <div class="pl-scroll" id="pl-scroll"><div class="pl-thread" id="pl-thread" aria-live="off"></div></div>
    <form class="pl-composer" id="pl-form">
     <div class="pl-atts" id="pl-atts" hidden></div>
-    <label class="sr-only" for="pl-input" data-i18n="pl.ask">Tu mensaje para CB Pilot</label>
-    <textarea id="pl-input" rows="1" placeholder="Preguntale lo que quieras a CB Pilot…" data-i18n-attr="placeholder:pl.placeholder" enterkeyhint="send"></textarea>
+    <label class="sr-only" for="pl-input" data-i18n="pl.ask">Tu mensaje para CeBe Pilot</label>
+    <textarea id="pl-input" rows="1" placeholder="Escribile a Pilo lo que necesités…" data-i18n-attr="placeholder:pl.placeholder" enterkeyhint="send"></textarea>
     <div class="pl-bar">
      <button type="button" class="pl-tool" id="pl-attach" aria-label="Adjuntar archivo o foto" title="Adjuntar archivo o foto" data-i18n-attr="aria-label:pl.attach"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.4 11.6-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l8.5-8.5a3.7 3.7 0 0 1 5.2 5.2l-8.5 8.5a1.8 1.8 0 0 1-2.6-2.6l7.8-7.8"/></svg></button>
      <input type="file" id="pl-file" multiple hidden accept="image/*,.pdf,.txt,.md,.csv,.json,.js,.ts,.py,.html,.css,.xml,.sql,.java,.php,.c,.cpp,.cs,.rb,.go">
@@ -67,20 +68,20 @@
     </div>
     <div class="pl-drop" id="pl-drop" hidden><span data-i18n="pl.drop">Soltá aquí tus archivos o fotos</span></div>
    </form>
-   <p class="pl-note" data-i18n="pl.note">CB Pilot puede equivocarse: verificá lo importante. No compartas contraseñas ni datos sensibles.</p>
+   <p class="pl-note" data-i18n="pl.note">CeBe Pilot puede equivocarse: verificá lo importante. No compartas contraseñas ni datos sensibles.</p>
   </div>
   <div class="pl-view pl-tasks" id="pl-tasks" hidden>
    <div class="pl-tasks-in">
     <div class="pl-tasks-head">
-     <span class="eyebrow" data-i18n="pl.tasks.eyebrow">Modo Tareas</span>
-     <h2 data-i18n="pl.tasks.title">Varias tareas, <span class="grad">al mismo tiempo</span>.</h2>
-     <p class="lead" data-i18n="pl.tasks.lead">Escribí una tarea por línea y CB Pilot las resuelve en paralelo. Cada tarjeta se puede copiar o abrir como chat para seguir conversando.</p>
+     <span class="eyebrow" data-i18n="pl.tasks.eyebrow">Torre de control</span>
+     <h2 data-i18n="pl.tasks.title">Varias misiones, <span class="grad">al mismo tiempo</span>.</h2>
+     <p class="lead" data-i18n="pl.tasks.lead">Escribí una tarea por línea (o elegí una ruta) y Pilo las despega en paralelo. Cada tarjeta se puede copiar o abrir como chat para seguir conversando.</p>
     </div>
     <form class="pl-task-form card" id="pl-task-form">
      <label for="pl-task-input" class="sr-only" data-i18n="pl.tasks.input">Tareas, una por línea</label>
      <textarea id="pl-task-input" rows="4" placeholder="Ej.: Escribí 5 ideas de posts para mi panadería&#10;Redactá la sección «Sobre nosotros» de mi web&#10;Armá un plan de contenido de 2 semanas" data-i18n-attr="placeholder:pl.tasks.ph"></textarea>
-     <div class="pl-packs" id="pl-packs" aria-label="Paquetes de tareas"></div>
-     <div class="pl-task-actions"><span class="muted" id="pl-task-hint"></span><button class="btn btn-primary btn-sm" type="submit" id="pl-task-go" data-i18n="pl.tasks.go">Lanzar tareas</button></div>
+     <div class="pl-packs" id="pl-packs" aria-label="Rutas"></div>
+     <div class="pl-task-actions"><span class="muted" id="pl-task-hint"></span><button class="btn btn-primary btn-sm" type="submit" id="pl-task-go" data-i18n="pl.tasks.go">✈️ Despegar</button></div>
     </form>
     <div class="pl-task-bar"><h3 data-i18n="pl.tasks.board">Tablero</h3><button type="button" class="pl-link" id="pl-task-clear" data-i18n="pl.tasks.clear">Limpiar terminadas</button></div>
     <div class="pl-board" id="pl-board" aria-live="polite"></div>

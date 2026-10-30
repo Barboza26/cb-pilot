@@ -1,4 +1,4 @@
-/* CB Pilot — panel de administración (solo el dueño). Todo se valida y autoriza en el servidor. */
+/* CeBe Pilot — panel de administración (solo el dueño). Todo se valida y autoriza en el servidor. */
 (() => {
   "use strict";
   const A = window.PILOT_APP; if (!A) return;
@@ -64,19 +64,19 @@
   }
 
   const VIEWS = {
-    // CB Pilot: presupuesto de la IA, precios de los planes y códigos de acceso. No se guardan conversaciones.
+    // CeBe Pilot: presupuesto de la IA, precios de los planes y códigos de acceso. No se guardan conversaciones.
     async resumen(v) {
       const d = await api("/api/admin/pilot"), c = d.config, sp = d.spend, P = d.plans;
       const usd = n => "US$" + Number(n || 0).toFixed(Number(n || 0) < 1 ? 3 : 2);
       const pct = Math.min(100, Math.round((sp.usd / c.budgetUsd) * 100));
       const days = Object.entries(sp.days || {}).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 10);
-      v.innerHTML = `${d.keyConfigured ? "" : `<p class="form-msg">Falta la clave de la IA: en Netlify → Project configuration → Environment variables agregá <code>ANTHROPIC_API_KEY</code> (se crea en console.anthropic.com) y volvé a publicar. Mientras tanto CB Pilot muestra «todavía no está activado».</p>`}
+      v.innerHTML = `${d.keyConfigured ? "" : `<p class="form-msg">Falta la clave de la IA: en Netlify → Project configuration → Environment variables agregá <code>ANTHROPIC_API_KEY</code> (se crea en console.anthropic.com) y volvé a publicar. Mientras tanto CeBe Pilot muestra «todavía no está activado».</p>`}
         <div class="kpis"><div class="card kpi"><span class="muted">Gasto de ${esc(d.month)}</span><b>${usd(sp.usd)}</b><small class="muted">${pct} % de ${usd(c.budgetUsd)}</small></div>
           <div class="card kpi"><span class="muted">Mensajes del mes</span><b>${sp.msgs || 0}</b></div>
           ${Object.keys(P).map(k => `<div class="card kpi"><span class="muted">Plan ${esc(P[k].name)}</span><b>${sp.plans?.[k]?.msgs || 0}</b><small class="muted">${usd(sp.plans?.[k]?.usd)}</small></div>`).join("")}</div>
         <form class="card checkout" id="pcfg"><h2>Configuración</h2>
-          <label class="check"><input type="checkbox" id="q-en" ${c.enabled ? "checked" : ""}> CB Pilot activo (desmarcalo para pausarlo de inmediato).</label>
-          <label class="check"><input type="checkbox" id="q-ra" ${c.requireAccount ? "checked" : ""}> Pedir cuenta para usar CB Pilot (también el plan gratis). Si está desmarcado, se puede chatear sin registrarse.</label>
+          <label class="check"><input type="checkbox" id="q-en" ${c.enabled ? "checked" : ""}> CeBe Pilot activo (desmarcalo para pausarlo de inmediato).</label>
+          <label class="check"><input type="checkbox" id="q-ra" ${c.requireAccount ? "checked" : ""}> Pedir cuenta para usar CeBe Pilot (también el plan gratis). Si está desmarcado, se puede chatear sin registrarse.</label>
           <div class="fields"><div class="field"><label for="q-b">Presupuesto mensual de la IA (US$)</label><input id="q-b" type="number" min="1" step="1" value="${c.budgetUsd}"></div>
           <div class="field"><label for="q-fs">El plan gratis se pausa al llegar al (% del presupuesto)</label><input id="q-fs" type="number" min="0" max="100" value="${Math.round(c.freeShare * 100)}"></div>
           <div class="field"><label for="q-fd">Mensajes gratis por día (por persona)</label><input id="q-fd" type="number" min="0" max="500" value="${c.freePerDay}"></div><div class="field"></div>
@@ -84,7 +84,7 @@
           <div class="field"><label for="q-pm">Precio plan Max (₡ por mes; vacío = «por WhatsApp»)</label><input id="q-pm" type="number" min="0" value="${c.prices.max ?? ""}"></div></div>
           <p class="muted">Modelos: Gratis = ${esc(P.gratis.model)} · Pro = ${esc(P.pro.model)} (${P.pro.perDay}/día, ${P.pro.perMonth}/mes) · Max = ${esc(P.max.model)} (${P.max.perDay}/día, ${P.max.perMonth}/mes). Corte por tiempo: ${d.deadlineMs} ms.</p>
           <div id="q-msg"></div><button class="btn btn-primary">Guardar</button></form>
-        <form class="card checkout" id="pcode"><h2>Crear código de acceso</h2><p class="muted">Cuando un cliente paga su plan (por ejemplo por SINPE), creale un código y enviáselo por WhatsApp. Lo activa en CB Pilot → Planes. El código se muestra una sola vez.</p>
+        <form class="card checkout" id="pcode"><h2>Crear código de acceso</h2><p class="muted">Cuando un cliente paga su plan (por ejemplo por SINPE), creale un código y enviáselo por WhatsApp. Lo activa en CeBe Pilot → Planes. El código se muestra una sola vez.</p>
           <div class="fields"><div class="field"><label for="n-pl">Plan</label><select id="n-pl"><option value="pro">Pro</option><option value="max">Max</option></select></div>
           <div class="field"><label for="n-d">Días de vigencia</label><input id="n-d" type="number" min="1" max="400" value="30"></div>
           <div class="field full"><label for="n-l">Cliente o nota (para identificarlo)</label><input id="n-l" maxlength="120" placeholder="Ej.: Ana Mora · SINPE 12/10"></div></div>
@@ -102,7 +102,7 @@
         e.preventDefault();
         try {
           const r = await api("/api/admin/pilot/code", { plan: $("#n-pl").value, days: Number($("#n-d").value), label: $("#n-l").value });
-          const text = `¡Hola! Tu código de CB Pilot ${P[r.record.plan].name} es ${r.code} (vence el ${date(r.record.expiresAt)}). Activalo en ${location.origin}/ → Planes.`;
+          const text = `¡Hola! Tu código de CeBe Pilot ${P[r.record.plan].name} es ${r.code} (vence el ${date(r.record.expiresAt)}). Activalo en ${location.origin}/ → Planes.`;
           await VIEWS.resumen(v); // actualiza la tabla de códigos; el código en claro se muestra solo aquí
           $("#n-msg").innerHTML = `<p class="form-msg ok" role="status">Código creado: <b style="font-family:var(--f-mono)">${esc(r.code)}</b> — copialo ahora, no se vuelve a mostrar.</p><p><button type="button" class="btn btn-ghost btn-sm" id="n-copy">Copiar mensaje para el cliente</button></p>`;
           $("#n-copy").addEventListener("click", () => navigator.clipboard?.writeText(text).then(() => { $("#n-copy").textContent = "¡Copiado!"; }));
@@ -124,7 +124,7 @@
           <div class="card kpi"><span class="muted">Con plan pago</span><b>${list.filter(u => u.plan !== "gratis").length}</b></div>
           <div class="card kpi"><span class="muted">Nuevas esta semana</span><b>${list.filter(u => Date.parse(u.createdAt) > week).length}</b></div>
           <div class="card kpi"><span class="muted">Bloqueadas</span><b>${list.filter(u => u.blocked).length}</b></div></div>
-        <p class="muted">Los clientes crean su cuenta desde CB Pilot (botón «Iniciar sesión»). Aquí podés darles un plan sin código, quitarlo, bloquear, crear una contraseña temporal si la olvidaron o eliminar la cuenta. Nunca se ve la contraseña ni el contenido de sus chats.</p>
+        <p class="muted">Los clientes crean su cuenta desde CeBe Pilot (botón «Iniciar sesión»). Aquí podés darles un plan sin código, quitarlo, bloquear, crear una contraseña temporal si la olvidaron o eliminar la cuenta. Nunca se ve la contraseña ni el contenido de sus chats.</p>
         <div class="field"><label for="us-q">Buscar por nombre o correo</label><input id="us-q" type="search" value="${esc(keep.q || "")}" placeholder="ana@ejemplo.com"></div>
         <div class="tbl"><table><tr><th>Cliente</th><th>Plan</th><th>Registro</th><th>Último ingreso</th><th>Estado</th><th></th></tr>
         ${shown.map(u => `<tr data-id="${esc(u.id)}"><td><b>${esc(u.name)}</b><br><small class="muted">${esc(u.email)}</small></td>
@@ -164,11 +164,11 @@
         }));
       }));
     },
-    // Base de conocimiento: lo que CB Pilot consulta antes de responder.
+    // Base de conocimiento: lo que CeBe Pilot consulta antes de responder.
     async conocimiento(v) {
       const d = await api("/api/admin/knowledge");
       const mode = d.chars <= d.fullLimit ? "Completa en cada mensaje" : "Búsqueda de lo relevante";
-      v.innerHTML = `<p class="muted">Todo lo que agregues aquí, CB Pilot lo usa como referencia al responder y cita la fuente. Mientras la base sea chica (hasta ${size(d.fullLimit)}) se le da completa; cuando crece, busca solo los fragmentos relacionados con cada pregunta. Lo que contienen las fuentes se trata como información, nunca como instrucciones.</p>
+      v.innerHTML = `<p class="muted">Todo lo que agregues aquí, CeBe Pilot lo usa como referencia al responder y cita la fuente. Mientras la base sea chica (hasta ${size(d.fullLimit)}) se le da completa; cuando crece, busca solo los fragmentos relacionados con cada pregunta. Lo que contienen las fuentes se trata como información, nunca como instrucciones.</p>
         <div class="kpis"><div class="card kpi"><span class="muted">Fuentes activas</span><b>${d.active}</b><small class="muted">de ${d.sources.length}</small></div>
           <div class="card kpi"><span class="muted">Fragmentos</span><b>${d.chunks}</b></div>
           <div class="card kpi"><span class="muted">Tamaño</span><b>${d.chars < 1000 ? d.chars : Math.round(d.chars / 1000) + " mil"}</b><small class="muted">caracteres · ${Math.max(d.chars ? 1 : 0, Math.round(d.chars / d.maxChars * 100))} % de la capacidad</small></div>
@@ -185,7 +185,7 @@
             <div class="field"><label for="kb-x">Texto</label><textarea id="kb-x" rows="5"></textarea></div>
             <div id="kb-text-msg"></div><button class="btn btn-primary">Guardar</button></form>
         </div>
-        <form class="card" id="kb-try"><h2>Probar</h2><p class="muted">Escribí una pregunta para ver qué fragmentos encontraría CB Pilot.</p>
+        <form class="card" id="kb-try"><h2>Probar</h2><p class="muted">Escribí una pregunta para ver qué fragmentos encontraría CeBe Pilot.</p>
           <div class="kb-row"><div class="field"><label for="kb-q" class="sr-only">Pregunta</label><input id="kb-q" placeholder="¿Cuánto cuesta una demo exclusiva?"></div><button class="btn btn-ghost">Buscar</button></div><div id="kb-res"></div></form>
         <h2>Fuentes</h2><div class="tbl"><table><tr><th>Título</th><th>Tipo</th><th>Tamaño</th><th>Actualizada</th><th>Estado</th><th></th></tr>
           ${d.sources.map(x => `<tr data-id="${esc(x.id)}"><td>${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.title)}</a>` : esc(x.title)}${x.name ? `<br><small class="muted">${esc(x.name)}</small>` : ""}</td><td>${TYPE[x.type] || x.type}</td><td>${size(x.chars)}<br><small class="muted">${x.chunks} ${x.chunks === 1 ? "fragmento" : "fragmentos"}</small></td><td>${date(x.updatedAt)}</td><td>${x.active ? "Activa" : "Desactivada"}</td>
@@ -232,10 +232,10 @@
         const id = b.closest("[data-id]").dataset.id, act = b.dataset.kb;
         if (act === "view") {
           const r = await api(`/api/admin/knowledge/source?id=${encodeURIComponent(id)}`);
-          $("#kb-prev").innerHTML = `<div class="card"><h2>${esc(r.source.title)}</h2><p class="muted">Así lo leyó CB Pilot (primeros 4 000 caracteres):</p><pre class="kb-pre">${esc(r.text)}</pre></div>`;
+          $("#kb-prev").innerHTML = `<div class="card"><h2>${esc(r.source.title)}</h2><p class="muted">Así lo leyó CeBe Pilot (primeros 4 000 caracteres):</p><pre class="kb-pre">${esc(r.text)}</pre></div>`;
           return $("#kb-prev").scrollIntoView({ behavior: "smooth" });
         }
-        if (act === "delete" && !confirm("¿Eliminar esta fuente? CB Pilot dejará de usarla.")) return;
+        if (act === "delete" && !confirm("¿Eliminar esta fuente? CeBe Pilot dejará de usarla.")) return;
         const wasActive = b.textContent === "Desactivar";
         b.disabled = true; b.textContent = "…";
         try {

@@ -1,4 +1,4 @@
-// Cuentas de clientes de CB Pilot: registro con correo y contraseña, sesión con cookie firmada y plan guardado en la cuenta.
+// Cuentas de clientes de CeBe Pilot: registro con correo y contraseña, sesión con cookie firmada y plan guardado en la cuenta.
 // La contraseña se guarda con scrypt (nunca en claro). El contenido de los chats NO se guarda: sigue en el dispositivo.
 import { getJSON, putJSON, update, listKeys, del } from "./db.mjs";
 import { fail, hashPassword, verifyPassword, sign, verify, cookies, isEmail, str, sha256, randomToken, now, int } from "./util.mjs";

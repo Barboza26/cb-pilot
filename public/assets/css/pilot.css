@@ -1,4 +1,4 @@
-/* CB Pilot — la aplicación de chat (index.html, lógica en assets/js/pilot.js) */
+/* CeBe Pilot — la aplicación de chat (index.html, lógica en assets/js/pilot.js) */
 body.pilot-body{height:100dvh;overflow:hidden}
 .pilot{--side:284px;display:grid;grid-template-columns:var(--side) minmax(0,1fr);height:100dvh;position:relative}
 .pilot.has-canvas{grid-template-columns:var(--side) minmax(0,1fr) minmax(380px,46%)}
@@ -318,3 +318,56 @@ body.pilot-body{height:100dvh;overflow:hidden}
 .pl-danger-btn{background:#dc2626;box-shadow:none}
 #acc-delete{display:grid;gap:.6rem}
 #acc-delete[hidden]{display:none}
+
+/* ---------- Pilo, la lapa copiloto ---------- */
+.pilo{display:block;overflow:visible}
+.pilo .pilo-lid{transform-box:fill-box;transform-origin:center;transform:scaleY(0);animation:pilo-blink 5.5s infinite}
+.pilo .pilo-wing{transform-box:fill-box;transform-origin:65% 8%}
+.pilo-hero{width:128px;height:128px;position:relative;z-index:1;animation:pilo-bob 3.6s ease-in-out infinite;filter:drop-shadow(0 14px 26px rgba(224,38,43,.35))}
+.pilo-hero .pilo-wing{animation:pilo-wave 3.6s ease-in-out infinite}
+.pl-hello .pl-pilo{position:relative;display:grid;place-items:center;width:150px;height:150px}
+.pl-hello .pl-pilo::before{content:"";position:absolute;inset:6px;border-radius:50%;background:radial-gradient(circle,rgba(var(--a1),.28),transparent 70%)}
+.pl-hello .pl-pilo::after{content:"";position:absolute;inset:0;border-radius:50%;border:1px solid rgba(var(--a2),.35);animation:pl-halo 3.2s ease-out infinite}
+.pl-ava{background:radial-gradient(circle at 50% 40%,rgba(var(--a1),.22),rgba(var(--a1),.06));box-shadow:0 0 0 1px var(--line);overflow:visible;font-size:0}
+.pl-ava .pilo{width:118%;height:118%;margin:-9% 0 0 -6%}
+.pl-msg.bot.is-live .pl-ava{animation:none}
+.pl-msg.bot.is-live .pilo-wing,.pilo.is-thinking .pilo-wing{animation:pilo-flap .32s ease-in-out infinite alternate}
+.pl-msg.bot.is-live .pilo{animation:pilo-bob 1s ease-in-out infinite}
+@keyframes pilo-blink{0%,92%,100%{transform:scaleY(0)}95%{transform:scaleY(1)}}
+@keyframes pilo-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes pilo-wave{0%,70%,100%{transform:rotate(0)}78%{transform:rotate(-14deg)}86%{transform:rotate(4deg)}}
+@keyframes pilo-flap{from{transform:rotate(4deg)}to{transform:rotate(-18deg)}}
+
+/* ---------- Despegue (al abrir) ---------- */
+.pl-splash{position:fixed;inset:0;z-index:200;display:grid;place-content:center;justify-items:center;gap:.5rem;background:radial-gradient(circle at 50% 45%,rgba(var(--a1),.25),var(--bg) 60%),var(--bg);pointer-events:none;animation:pl-splash-out .5s ease 1.25s forwards}
+.pl-splash img{width:110px;height:110px;animation:pl-takeoff 1.3s cubic-bezier(.5,0,.3,1) forwards}
+.pl-splash b{font:800 1.6rem/1 var(--f-title);letter-spacing:-.01em;animation:pl-rise .6s ease .15s both}
+.pl-splash span{font:700 .72rem/1 var(--f-mono);letter-spacing:.24em;text-transform:uppercase;color:var(--cyan);animation:pl-rise .6s ease .3s both}
+.pl-splash i{width:160px;height:3px;border-radius:3px;margin-top:.8rem;background:linear-gradient(90deg,#002B7F,#fff,#CE1126,#fff,#002B7F);background-size:200% 100%;animation:pl-runway 1.2s linear infinite}
+@keyframes pl-takeoff{0%{transform:translateY(30px) scale(.8);opacity:0}35%{transform:translateY(0) scale(1);opacity:1}75%{transform:translateY(-4px) rotate(-4deg)}100%{transform:translateY(-30px) rotate(-10deg) scale(.95);opacity:.9}}
+@keyframes pl-rise{from{transform:translateY(10px);opacity:0}}
+@keyframes pl-runway{to{background-position:-200% 0}}
+@keyframes pl-splash-out{to{opacity:0;visibility:hidden}}
+
+/* ---------- Fondo vivo: aurora que respira; más intensa mientras Pilo piensa ---------- */
+.pl-main::after{content:"";position:absolute;inset:-20%;z-index:-2;pointer-events:none;opacity:.55;filter:blur(60px);
+  background:radial-gradient(30% 35% at 20% 30%,rgba(var(--a1),.35),transparent 70%),radial-gradient(28% 32% at 80% 25%,rgba(var(--a3),.22),transparent 70%),radial-gradient(35% 30% at 55% 85%,rgba(var(--a2),.22),transparent 70%);
+  animation:pl-aurora 22s ease-in-out infinite alternate;transition:opacity .8s}
+.is-thinking .pl-main::after{opacity:1;animation-duration:7s}
+@keyframes pl-aurora{0%{transform:translate(0,0) rotate(0)}50%{transform:translate(4%,-3%) rotate(8deg)}100%{transform:translate(-4%,3%) rotate(-6deg)}}
+[data-theme="light"] .pl-main::after{opacity:.35}
+
+/* ---------- Cabina: medidor de combustible (uso de hoy) ---------- */
+.pl-fuel{display:flex;align-items:center;gap:.7rem}
+.pl-fuel svg{width:86px;height:50px;flex:none;overflow:visible}
+.pl-fuel .g-bg{stroke:rgba(148,163,184,.22)}
+.pl-fuel .g-val{stroke:url(#pl-fuel-grad);transition:stroke-dashoffset .6s}
+.pl-fuel .g-needle{transform-origin:43px 44px;transition:transform .6s cubic-bezier(.3,1.4,.5,1)}
+.pl-fuel.is-low .g-val{stroke:#ef4444}
+.pl-fuel-txt{display:grid;line-height:1.2}
+.pl-fuel-txt small{font:700 .6rem/1.2 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--gray)}
+.pl-fuel-txt b{font:800 1.3rem/1.1 var(--f-title);color:var(--strong)}
+.pl-fuel-txt span{font-size:.72rem;color:var(--gray)}
+.pl-auth-orb{width:64px;height:64px}
+
+@media (prefers-reduced-motion:reduce){.pl-splash{display:none}.pilo-hero,.pilo .pilo-lid,.pilo-hero .pilo-wing,.pl-main::after,.pl-msg.bot.is-live .pilo,.pl-msg.bot.is-live .pilo-wing{animation:none}}

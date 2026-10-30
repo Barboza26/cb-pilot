@@ -1,12 +1,12 @@
 /* =====================================================================
-   CB Pilot — estilos base (colores, tipografía, botones, campos, diálogos)
+   CeBe Pilot — estilos base (colores, tipografía, botones, campos, diálogos)
    Temas: oscuro (por defecto) y claro, con 5 colores de acento (data-theme / data-accent en <html>).
    ===================================================================== */
 @import url("../fonts/fonts-local.css");
 
 :root{
   /* Acento (r,g,b): se cambia con data-accent */
-  --a1:37,99,235; --a2:56,189,248; --a3:139,92,246;
+  --a1:37,99,235; --a2:56,189,248; --a3:225,29,72; /* Bandera (por defecto): azul, celeste y rojo */
   --blue:rgb(var(--a1)); --cyan:rgb(var(--a2)); --violet:rgb(var(--a3));
   /* Superficies y texto (tema oscuro) */
   --bg-rgb:7,13,28; --bg2-rgb:16,29,56; --bg:rgb(var(--bg-rgb)); --bg-2:rgb(var(--bg2-rgb));
@@ -26,13 +26,14 @@
   --glow:0 0 0 1px rgba(var(--a1),.14),0 18px 50px -22px rgba(var(--a1),.45);
   color-scheme:light;
 }
-/* Colores de acento */
-[data-accent="morado"]{--a1:124,58,237; --a2:192,132,252; --a3:56,189,248}
-[data-accent="verde"]{--a1:5,150,105; --a2:52,211,153; --a3:56,189,248}
-[data-accent="naranja"]{--a1:234,88,12; --a2:251,191,36; --a3:244,63,94}
-[data-accent="rosa"]{--a1:219,39,119; --a2:244,114,182; --a3:139,92,246}
-[data-theme="light"][data-accent="naranja"]{--a2:217,119,6}
-[data-theme="light"][data-accent="verde"]{--a2:16,185,129}
+/* Paletas ticas */
+[data-accent="selva"]{--a1:5,150,105; --a2:74,222,128; --a3:250,204,21}
+[data-accent="arenal"]{--a1:220,38,38; --a2:251,146,60; --a3:250,204,21}
+[data-accent="caribe"]{--a1:13,148,136; --a2:45,212,191; --a3:56,189,248}
+[data-accent="pacifico"]{--a1:234,88,12; --a2:251,191,36; --a3:236,72,153}
+[data-theme="light"][data-accent="selva"]{--a2:16,185,129}
+[data-theme="light"][data-accent="pacifico"]{--a2:217,119,6}
+[data-theme="light"][data-accent="arenal"]{--a2:234,88,12}
 *,*::before,*::after{box-sizing:border-box}
 *{margin:0}
 html{-webkit-text-size-adjust:100%}
@@ -60,6 +61,7 @@ h1,h2,h3{font-family:var(--f-title);line-height:1.08;letter-spacing:-.02em;font-
 .logo-orb{width:32px;height:32px;border-radius:50%;flex:none;position:relative;background:conic-gradient(from 120deg,var(--blue),var(--cyan),var(--violet),var(--blue));box-shadow:0 0 18px rgba(var(--a2),.4);display:grid;place-items:center;font:800 .62rem/1 var(--f-title);color:#fff}
 .logo-orb::after{content:"";position:absolute;inset:3px;border-radius:50%;background:radial-gradient(circle at 35% 30%,rgba(var(--a1),.5),#070D1C 72%)}
 .logo-orb span{position:relative;z-index:1;color:#fff}
+.logo-pilo{width:36px;height:36px;flex:none;filter:drop-shadow(0 4px 10px rgba(224,38,43,.35))}
 
 /* Botones */
 .btn{--pad:.95rem 1.5rem;display:inline-flex;align-items:center;justify-content:center;gap:.6rem;padding:var(--pad);border-radius:999px;font:600 .95rem/1 var(--f-body);border:1px solid transparent;transition:transform .2s,box-shadow .25s,border-color .25s,background .25s;white-space:nowrap}

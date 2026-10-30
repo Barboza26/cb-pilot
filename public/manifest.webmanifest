@@ -1,7 +1,7 @@
 {
-  "name": "CB Pilot",
-  "short_name": "CB Pilot",
-  "description": "Tu asistente de inteligencia artificial.",
+  "name": "CeBe Pilot",
+  "short_name": "CeBe Pilot",
+  "description": "La IA de Costa Rica.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#070D1C",
