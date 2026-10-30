@@ -1,4 +1,4 @@
-// API de CeBe Pilot (una sola función con rutas internas): chat, planes y panel de administración.
+// API de CB Pilot (una sola función con rutas internas): chat, planes y panel de administración.
 import { setNamespaceFromHost, currentNamespace } from "../lib/db.mjs";
 import { adminExists, setupAdmin, login, logoutCookie, requireAdmin, changePassword } from "../lib/admin.mjs";
 import { status, activate, chat, adminOverview, savePilotConfig, createCode, revokeCode, keyConfigured } from "../lib/pilot.mjs";

@@ -1,4 +1,4 @@
-/* CeBe Pilot — interfaz del asistente de inteligencia artificial.
+/* CB Pilot — interfaz del asistente de inteligencia artificial.
    Chats que responden en paralelo, Modo Tareas, vista previa de diseños HTML y planes con código de acceso.
    Las conversaciones se guardan SOLO en este dispositivo (localStorage); la IA responde desde /api/pilot/chat. */
 (() => {
@@ -143,7 +143,7 @@
       if (!onEvent) { if (!res.ok || d.ok === false) throw fail(d.error || "error", d.message || "Error"); return d; }
       throw fail(d.error || "error", d.message || T("No pude responder. Intentá de nuevo.", "I couldn't answer. Please try again."));
     }
-    if (!ct.includes("ndjson") || !res.body) throw fail("offline", T("CeBe Pilot necesita su servidor en línea.", "CeBe Pilot needs its online server."));
+    if (!ct.includes("ndjson") || !res.body) throw fail("offline", T("CB Pilot necesita su servidor en línea.", "CB Pilot needs its online server."));
     const reader = res.body.getReader(), dec = new TextDecoder();
     let buf = "", done = null;
     for (;;) {
@@ -184,7 +184,7 @@
     catch (e) { info = null; if (e.code === "offline") offline = e.message; }
     user = info?.user || null;
     renderAcct(); renderPlan();
-    if (info?.requireAccount && !user) openAuth("register", true); $("#pl-model").textContent = info ? info.label : "CeBe Pilot";
+    if (info?.requireAccount && !user && !(panel.open && panelKind === "welcome")) openAuth("register", true); $("#pl-model").textContent = info ? info.label : "CB Pilot";
     if (!current || !chatById(current)?.messages.length) renderThread();
   }
   let offline = null, user = null;
@@ -223,7 +223,7 @@
     // Los archivos viajan solo con el último mensaje; los anteriores se mencionan por nombre para no gastar de más.
     const history = msgs.map(m => ({ role: m.role, content: m.files?.length && m !== lastUser ? `${m.content}\n[${T("Adjuntó", "Attached")}: ${m.files.map(f => f.name).join(", ")}]` : m.content }));
     const extra = { style: settings.style, habla: settings.habla, assistant: chat.assistant || "general", attachments: fileData.get(lastUser) || [] };
-    const bot = { role: "assistant", content: "", pending: true };
+    const bot = { role: "assistant", content: "", pending: true, assistant: extra.assistant };
     chat.messages.push(bot);
     const ac = new AbortController(); running.set(chat.id, ac); busy();
     renderList(); if (chat.id === current) renderThread(true); syncComposer();
@@ -289,10 +289,11 @@
   function hello() {
     const warn = offline || (info && !info.available ? info.reason : "");
     return `<div class="pl-hello"><div class="pl-pilo">${pilo("pilo-hero")}</div>
-      <h2>${user ? T(`¡Pura vida, ${esc(firstName())}! ¿En qué te ayudo <span class='grad'>hoy</span>?`, `Pura vida, ${esc(firstName())}! How can I help <span class='grad'>today</span>?`) : T("¡Pura vida! ¿En qué te ayudo <span class='grad'>hoy</span>?", "Pura vida! How can I help <span class='grad'>today</span>?")}</h2>
-      <p>${T("Soy Pilo, el copiloto de CeBe Pilot, la IA de Costa Rica 🇨🇷. Escribo, diseño, programo, planeo, traduzco y le doy una mano a tu negocio… y puedo hacer varias tareas a la vez.", "I'm Pilo, CeBe Pilot's copilot: the AI from Costa Rica 🇨🇷. I write, design, code, plan, translate and help your business… and I can work on several tasks at once.")}</p>
+      <h2>${user ? T(`¡Pura vida, <span class='grad'>${esc(firstName())}</span>!`, `Pura vida, <span class='grad'>${esc(firstName())}</span>!`) : T("¡Pura <span class='grad'>vida</span>!", "Pura <span class='grad'>vida</span>!")}</h2>
+      <p class="pl-sub">${T("Soy Pilo, su copiloto de IA", "I'm Pilo, your AI copilot")}</p>
+      <p class="pl-lead">${T("Estoy aquí para ayudarle a conversar, aprender, crear, programar y sacar adelante sus proyectos. Hecho en Costa Rica 🇨🇷.", "I'm here to help you chat, learn, create, code and move your projects forward. Made in Costa Rica 🇨🇷.")}</p>
       ${warn ? `<p class="form-msg" role="status">${esc(warn)}</p>` : ""}
-      <div class="pl-chips">${CHIPS.map((c, i) => `<button type="button" class="pl-chip" data-chip="${i}"><b>${c[0]} ${T(c[1], c[2])}</b><span>${T(c[3], c[4])}</span></button>`).join("")}</div></div>`;
+      <div class="pl-examples">${CHIPS.slice(0, 4).map((c, i) => `<button type="button" class="pl-ex" data-chip="${i}">${c[0]} ${T(c[1], c[2])}</button>`).join("")}</div></div>`;
   }
   // Fuentes de la base de conocimiento que se consultaron para responder.
   const sourcesHTML = list => `<div class="pl-srcs"><span>${T("Fuentes consultadas", "Sources")}</span>${list.map(x => {
@@ -319,11 +320,12 @@
       if (m.content && lastHtml(m.content)) tools += b("preview-last", "play", T("Vista previa", "Preview"));
       if (m.content) tools += `<button type="button" data-act="rate" data-v="up" aria-label="${T("Buena respuesta", "Good response")}" aria-pressed="${m.rating === "up"}">${icon("up")}</button><button type="button" data-act="rate" data-v="down" aria-label="${T("Mala respuesta", "Bad response")}" aria-pressed="${m.rating === "down"}">${icon("down")}</button>`;
     }
-    return `<div class="pl-msg bot${live ? " is-live" : ""}${m.error ? " error" : ""}" data-i="${i}"><span class="pl-ava" aria-hidden="true">${pilo()}</span><div class="pl-body md">${body}</div>${tools ? `<div class="pl-tools">${tools}</div>` : ""}</div>`;
+    return `<div class="pl-msg bot${live ? " is-live" : ""}${m.error ? " error" : ""}" data-i="${i}"><span class="pl-ava" aria-hidden="true">${pilo()}</span><div class="pl-who">Pilo${m.assistant && m.assistant !== "general" && ASSIST[m.assistant] ? ` · ${esc(T(ASSIST[m.assistant][1], ASSIST[m.assistant][2]))}` : ""}</div><div class="pl-body md">${body}</div>${tools ? `<div class="pl-tools">${tools}</div>` : ""}</div>`;
   }
   function renderThread(toBottom) {
     const chat = chatById(current), box = $("#pl-thread");
-    $("#pl-title").textContent = chat && chat.messages.length ? chat.title : "CeBe Pilot";
+    $("#pl-title").textContent = chat && chat.messages.length ? chat.title : "CB Pilot";
+    $("#pl-chat").classList.toggle("is-empty", !chat || !chat.messages.length);
     if (!chat || !chat.messages.length) { box.innerHTML = hello(); syncComposer(); return; }
     const n = chat.messages.length, lastUser = chat.messages.map(m => m.role).lastIndexOf("user");
     box.innerHTML = chat.messages.map((m, i) => msgHTML(m, i, chat, { isLast: i === n - 1, lastUser: i === lastUser })).join("");
@@ -446,11 +448,11 @@
     };
     const card = k => {
       const price = k === "gratis" ? `${crc(0)} <small>${T("para siempre", "forever")}</small>` : p[k]?.price ? `${crc(p[k].price)} <small>${T("/ mes", "/ month")}</small>` : `<small>${T("Precio por WhatsApp", "Price on WhatsApp")}</small>`;
-      const wa = `https://wa.me/${info?.whatsapp || ""}?text=${encodeURIComponent(T(`Hola, quiero el plan ${p[k]?.name || k} de CeBe Pilot.`, `Hi, I want the CeBe Pilot ${p[k]?.name || k} plan.`))}`;
+      const wa = `https://wa.me/${info?.whatsapp || ""}?text=${encodeURIComponent(T(`Hola, quiero el plan ${p[k]?.name || k} de CB Pilot.`, `Hi, I want the CB Pilot ${p[k]?.name || k} plan.`))}`;
       const cta = k === cur ? `<button class="btn btn-ghost" type="button" disabled>${T("Tu plan actual", "Your current plan")}</button>` : k === "gratis" ? "" : `<a class="btn btn-primary" href="${wa}" target="_blank" rel="noopener noreferrer">${T("Quiero", "I want")} ${esc(p[k]?.name || k)}</a>`;
       return `<div class="pl-pcard${k === "pro" ? " is-best" : ""}${k === cur ? " is-current" : ""}">${k === "pro" ? `<span class="pl-ribbon">${T("Recomendado", "Recommended")}</span>` : ""}<h3>${esc(planName(k))}</h3><div class="pl-price">${price}</div><ul>${FEAT[k].map(f => `<li>${esc(f)}</li>`).join("")}</ul>${cta}</div>`;
     };
-    $("#pl-plans-body").innerHTML = `<div class="pl-dialog-head"><div><span class="eyebrow">CeBe Pilot</span><h2 id="pl-plans-title">${T("Elegí tu <span class='grad'>plan</span>", "Choose your <span class='grad'>plan</span>")}</h2></div><button type="button" class="pl-icon" data-close aria-label="${T("Cerrar", "Close")}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    $("#pl-plans-body").innerHTML = `<div class="pl-dialog-head"><div><span class="eyebrow">CB Pilot</span><h2 id="pl-plans-title">${T("Elegí tu <span class='grad'>plan</span>", "Choose your <span class='grad'>plan</span>")}</h2></div><button type="button" class="pl-icon" data-close aria-label="${T("Cerrar", "Close")}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
       <div class="pl-plans">${["gratis", "pro", "max"].map(card).join("")}</div>
       <p class="muted">${T("Pagás por SINPE Móvil y te enviamos un código de acceso para activar tu plan en cualquier dispositivo.", "Pay via SINPE Móvil and we'll send you an access code to activate your plan on any device.")}</p>
       <p class="muted">${user ? T("Al activar un código con tu sesión iniciada, el plan queda en tu cuenta y lo usás en todos tus dispositivos.", "When you activate a code while signed in, the plan is saved to your account and works on all your devices.") : T("Consejo: <button type='button' class='pl-link' data-act='auth'>creá una cuenta gratis</button> para usar tu plan en todos tus dispositivos.", "Tip: <button type='button' class='pl-link' data-act='auth'>create a free account</button> to use your plan on all your devices.")}</p>
@@ -463,7 +465,7 @@
   // ---------------- Vista y paneles ----------------
   function setView(v) {
     view = v; $("#pl-chat").hidden = v !== "chat"; $("#pl-tasks").hidden = v !== "tasks";
-    $$(".pl-switch [data-view]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === v)));
+    $$(".pl-nav [data-view]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === v)));
     if (v === "tasks") { $("#pl-title").textContent = T("Torre de control", "Control tower"); paintTasks(); }
     else renderThread();
     renderList();
@@ -483,8 +485,15 @@
     tutor: ["📚", "Profe", "Tutor", "Explica paso a paso", "Explains step by step"],
     writer: ["✍️", "Redactor", "Writer", "Textos, correos y guiones", "Copy, emails and scripts"]
   };
-  const ACCENTS = { bandera: ["#002B7F", "#CE1126", "Bandera", "Flag"], selva: ["#059669", "#FACC15", "Selva", "Rainforest"], arenal: ["#DC2626", "#FB923C", "Volcán Arenal", "Arenal Volcano"], caribe: ["#0D9488", "#2DD4BF", "Caribe", "Caribbean"], pacifico: ["#EA580C", "#EC4899", "Atardecer Pacífico", "Pacific sunset"] };
-  const HABLAS = [["tico", "🇨🇷", "Tico", "Tico"], ["neutro", "🌎", "Neutro", "Neutral"], ["formal", "👔", "Formal", "Formal"]];
+  // Mundos: hoy cambian la paleta y la iluminación; los paisajes animados llegan en las próximas fases.
+  const WORLDS = [
+    ["original", "CB Pilot Original", "CB Pilot Original", "La cabina tecnológica de CeBe Studio: azul profundo y luz eléctrica.", "CeBe Studio's tech cockpit: deep blue and electric light."],
+    ["selva", "Selva costarricense", "Costa Rican rainforest", "Verdes del bosque tropical con destellos de sol.", "Tropical forest greens with sun flares."],
+    ["arenal", "Volcán Arenal", "Arenal Volcano", "Tonos cálidos de lava, roca y atardecer.", "Warm lava, rock and dusk tones."],
+    ["caribe", "Caribe costarricense", "Costa Rican Caribbean", "Turquesa del mar y arena tropical.", "Turquoise sea and tropical sand."],
+    ["pacifico", "Atardecer del Pacífico", "Pacific sunset", "Naranjas, rosados y violetas del atardecer.", "Sunset oranges, pinks and violets."],
+    ["bandera", "Bandera de Costa Rica", "Costa Rican flag", "Azul, blanco y rojo con estética tecnológica.", "Blue, white and red with a tech look."]
+  ];
   function syncPickers() {
     const m = MODES[settings.style], a = ASSIST[settings.assistant] || ASSIST.general;
     $("#pl-mode").innerHTML = `<span aria-hidden="true">${m[0]}</span>${esc(T(m[1], m[2]))}`;
@@ -511,19 +520,6 @@
   $("#pl-assist").addEventListener("click", e => openMenu(e.currentTarget, `<p class="pl-mh">${T("Asistente", "Assistant")}</p>` + Object.entries(ASSIST).map(([k, v]) => item(k, v, k === settings.assistant)).join(""), v => {
     settings.assistant = v; const c = chatById(current); if (c && !running.has(c.id)) { c.assistant = v; saveChats(); }
     syncPickers(); closeMenu(); $("#pl-input").focus();
-  }));
-  function themeMenu() {
-    const th = window.CBPILOT_THEME?.theme || "dark", ac = window.CBPILOT_THEME?.accent || "bandera";
-    const seg = [["dark", "🌙", "Oscuro", "Dark"], ["light", "☀️", "Claro", "Light"], ["system", "💻", "Sistema", "System"]];
-    return `<p class="pl-mh">${T("Tema", "Theme")}</p><div class="pl-tseg">${seg.map(([k, ic, es, en]) => `<button type="button" data-v="t:${k}" aria-pressed="${th === k}">${ic} ${T(es, en)}</button>`).join("")}</div>
-      <p class="pl-mh">${T("Paleta tica", "Costa Rican palette")}</p><div class="pl-sws">${Object.entries(ACCENTS).map(([k, [c1, c2, es, en]]) => `<button type="button" class="pl-sw" data-v="a:${k}" aria-pressed="${ac === k}" aria-label="${T(es, en)}" title="${T(es, en)}" style="background:linear-gradient(135deg,${c1},${c2})"></button>`).join("")}</div>
-      <p class="pl-mh">${T("Forma de hablar de Pilo", "How Pilo talks")}</p><div class="pl-tseg">${HABLAS.map(([k, ic, es, en]) => `<button type="button" data-v="h:${k}" aria-pressed="${settings.habla === k}">${ic} ${T(es, en)}</button>`).join("")}</div>`;
-  }
-  $("#pl-theme-btn").addEventListener("click", e => openMenu(e.currentTarget, themeMenu(), v => {
-    const [k, val] = v.split(":");
-    if (k === "h") { settings.habla = val; write("cbpilot-habla", val); }
-    else window.CBPILOT_THEME?.set(k === "t" ? "theme" : "accent", val);
-    menu.innerHTML = themeMenu();
   }));
   // (un botón que se volvió a dibujar dentro del menú ya no está en la página: no cuenta como "clic afuera")
   document.addEventListener("click", e => { if (menuFor && e.target.isConnected && !menu.contains(e.target) && !menuFor.contains(e.target)) closeMenu(); });
@@ -593,6 +589,117 @@
     });
   }
 
+  // ---------------- Acciones rápidas (con la conversación vacía) ----------------
+  const QUICK = [["attach", "📎", "Analizar archivo", "Analyze a file"], ["doc", "📄", "Crear documento", "Write a document"], ["code", "💻", "Ayuda con código", "Help with code"], ["web", "🎨", "Diseñar una página", "Design a page"], ["biz", "💡", "Ideas de negocio", "Business ideas"]];
+  function renderQuick() { $("#pl-quick").innerHTML = QUICK.map(([k, ic, es, en]) => `<button type="button" class="pl-qa" data-q="${k}"><span aria-hidden="true">${ic}</span>${esc(T(es, en))}</button>`).join(""); }
+  function setAssistant(v) { settings.assistant = v; const c = chatById(current); if (c && !running.has(c.id)) { c.assistant = v; saveChats(); } syncPickers(); }
+  function prefill(text) { const t = $("#pl-input"); t.value = text; grow(); t.focus(); t.setSelectionRange(text.length, text.length); }
+  $("#pl-quick").addEventListener("click", e => {
+    const b = e.target.closest("[data-q]"); if (!b) return;
+    const k = b.dataset.q;
+    if (k === "attach") return $("#pl-file").click();
+    if (k === "doc") { setAssistant("writer"); prefill(T("Redácteme un documento sobre ", "Write me a document about ")); }
+    if (k === "code") { setAssistant("code"); prefill(""); }
+    if (k === "web") { setAssistant("web"); prefill(T("Diseñe una landing page para ", "Design a landing page for ")); }
+    if (k === "biz") { setAssistant("marketing"); prefill(T("Deme ideas para hacer crecer mi negocio de ", "Give me ideas to grow my business of ")); }
+  });
+
+  // ---------------- Paneles: mundos, cabina de mando, configuración y bienvenida ----------------
+  const panel = $("#pl-panel"); let panelKind = null;
+  const closeX = `<button type="button" class="pl-icon pl-auth-x" data-close aria-label="${T("Cerrar", "Close")}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`;
+  const seg3 = (key, cur, opts) => `<div class="pl-seg3" role="group" style="grid-template-columns:repeat(${opts.length},1fr)">${opts.map(([v, label]) => `<button type="button" data-set="${key}:${v}" aria-pressed="${cur === v}">${label}</button>`).join("")}</div>`;
+  const ahorroOn = () => !!window.CBPILOT_THEME?.ahorro;
+  function ringGauge(left) {
+    const c = 2 * Math.PI * 62;
+    return `<svg viewBox="0 0 150 150" aria-hidden="true"><circle cx="75" cy="75" r="62" fill="none" stroke="rgba(148,163,184,.2)" stroke-width="12"/>
+      <circle cx="75" cy="75" r="62" fill="none" stroke="${left <= 20 ? "#ef4444" : "rgb(var(--a2))"}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${(c * (1 - left / 100)).toFixed(1)}" transform="rotate(-90 75 75)"/></svg>`;
+  }
+  const PANELS = {
+    worlds() {
+      const ac = window.CBPILOT_THEME?.accent || "original";
+      return `<div class="pl-ph"><div><span class="eyebrow">CB Pilot</span><h2 id="pl-panel-title">${T("Explorar mundos", "Explore worlds")}</h2><p>${T("Elija el ambiente de su cabina. Todos están incluidos en todos los planes.", "Pick your cockpit's ambience. All of them are included in every plan.")}</p></div>${closeX}</div>
+        <div class="pl-worlds">${WORLDS.map(([k, es, en, des, den]) => `<button type="button" class="pl-world" data-world="${k}" aria-pressed="${ac === k}"><span class="wp wp-${k}">${ac === k ? `<span class="tag">${T("Activo", "Active")}</span>` : ""}<img src="/assets/img/pilo.svg" alt=""></span><span class="wb"><b>${esc(T(es, en))}</b><small>${esc(T(des, den))}</small></span></button>`).join("")}</div>
+        <p class="muted">${T("Por ahora cada mundo cambia la paleta y la iluminación. Los paisajes animados (selva, volcán, playa…) llegan en las próximas fases, empezando por la Selva.", "For now each world changes the palette and lighting. Animated landscapes (rainforest, volcano, beach…) arrive in the next phases, starting with the Rainforest.")}</p>`;
+    },
+    cabina() {
+      const pct = info?.perDay ? Math.min(100, Math.round(info.usedToday / info.perDay * 100)) : null;
+      const mpct = info?.perMonth ? Math.min(100, Math.round(info.usedMonth / info.perMonth * 100)) : null;
+      const mode = (k, cls, icon, es, en, des, den, attr, on) => `<button type="button" class="pl-mode ${cls}" ${attr}="${on}" data-set="${k}"><span class="mi" aria-hidden="true">${icon}</span><b>${esc(T(es, en))}</b><small>${esc(T(des, den))}</small>${on ? `<span class="st">${T("Activo", "On")}</span>` : ""}</button>`;
+      return `<div class="pl-ph"><div><span class="eyebrow">${T("Copiloto", "Copilot")}</span><h2 id="pl-panel-title">${T("Cabina de mando", "Cockpit")}</h2><p>${T("Su plan, su uso real y cómo quiere que se comporte CB Pilot.", "Your plan, your real usage and how you want CB Pilot to behave.")}</p></div>${closeX}</div>
+        <div class="pl-cab">
+          <div class="pl-ring">${pct === null ? `<p class="muted">${esc(offline || T("Sin conexión con el servidor: no hay datos de uso.", "No server connection: no usage data."))}</p>` : `${ringGauge(100 - pct)}<span class="rv">${100 - pct} %</span><small>${T("Combustible de hoy: uso que le queda del plan", "Today's fuel: plan usage left")}</small>`}
+            ${info ? `<span class="pl-badge ${esc(info.plan)}">${T("Plan", "Plan")} ${esc(planName(info.plan))}</span>` : ""}</div>
+          <div class="pl-sec"><h3>${T("Modo de vuelo", "Flight mode")}</h3>
+            <div class="pl-modes">
+              ${mode("style:rapido", "m-crucero", "✈️", "Crucero", "Cruise", "Respuestas directas y al grano. Ideal para el día a día.", "Direct, to-the-point answers. Great for everyday use.", "aria-pressed", settings.style === "rapido")}
+              ${mode("style:detallado", "m-turbo", "🚀", "Turbo", "Turbo", "Respuestas más completas y razonamiento más profundo. Puede tardar un poco más.", "More complete answers and deeper reasoning. May take a bit longer.", "aria-pressed", settings.style === "detallado")}
+              ${mode("ahorro:toggle", "m-ahorro", "🌱", "Ahorro", "Saver", "Menos animaciones y efectos para cuidar la batería del dispositivo. Se combina con Crucero o Turbo.", "Fewer animations and effects to save battery. Works with Cruise or Turbo.", "aria-checked", ahorroOn())}
+            </div>
+            <div class="pl-stats">
+              <div class="pl-stat"><small>${T("Modelo de su plan", "Your plan's model")}</small><b>${esc(info?.label || "—")}</b></div>
+              <div class="pl-stat"><small>${T("Tareas a la vez", "Tasks at once")}</small><b>${info?.parallel ?? "—"}</b></div>
+              <div class="pl-stat"><small>${T("Uso del mes", "Monthly usage")}</small><b>${mpct === null ? T("Sin límite mensual", "No monthly limit") : mpct + " %"}</b></div>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" data-act="plans">${info?.plan === "gratis" ? T("✦ Mejorar plan", "✦ Upgrade plan") : T("Ver planes", "View plans")}</button>
+          </div></div>`;
+    },
+    settings() {
+      const th = window.CBPILOT_THEME?.theme || "dark";
+      return `<div class="pl-ph"><div><span class="eyebrow">CB Pilot</span><h2 id="pl-panel-title">${T("Configuración", "Settings")}</h2><p>${T("Se guarda en este dispositivo.", "Saved on this device.")}</p></div>${closeX}</div>
+        <div class="pl-sec"><h3>${T("Apariencia", "Appearance")}</h3>${seg3("theme", th, [["dark", T("🌙 Oscuro", "🌙 Dark")], ["light", T("☀️ Claro", "☀️ Light")], ["system", T("💻 Sistema", "💻 System")]])}
+          <div class="pl-row"><p>${T("Mundo actual", "Current world")}: <b>${esc(T(...(WORLDS.find(w => w[0] === (window.CBPILOT_THEME?.accent || "original")) || WORLDS[0]).slice(1, 3)))}</b></p><button type="button" class="btn btn-ghost btn-sm" data-open="worlds">${T("Explorar mundos", "Explore worlds")}</button></div></div>
+        <div class="pl-sec"><h3>${T("Cómo habla Pilo", "How Pilo talks")}</h3>${seg3("habla", settings.habla, [["tico", "🇨🇷 Tico"], ["neutro", T("🌎 Neutro", "🌎 Neutral")], ["formal", "👔 Formal"]])}
+          <p class="muted">${T("En documentos legales, cartas o textos profesionales siempre usa un tono formal.", "Legal documents, letters and professional texts always use a formal tone.")}</p></div>
+        <div class="pl-sec"><div class="pl-row"><div><h3>${T("Modo Ahorro", "Saver mode")}</h3><p>${T("Menos animaciones y efectos. Recomendado en celulares con poca batería.", "Fewer animations and effects. Recommended on phones with low battery.")}</p></div><button type="button" class="pl-switchbtn" role="switch" aria-checked="${ahorroOn()}" data-set="ahorro:toggle" aria-label="${T("Modo Ahorro", "Saver mode")}"></button></div></div>
+        <div class="pl-sec"><h3>${T("Idioma de la interfaz", "Interface language")}</h3>${seg3("lang", A.lang, [["es", "Español"], ["en", "English"]])}</div>
+        <div class="pl-sec"><h3>${T("Datos", "Data")}</h3><div class="pl-row"><p>${T("Sus chats y tareas se guardan en este dispositivo.", "Your chats and tasks are stored on this device.")}</p><button type="button" class="btn btn-ghost btn-sm pl-danger" data-act="wipe">${T("Borrar historial", "Delete history")}</button></div>
+          <div class="pl-row"><p>${user ? esc(user.email) : T("Sin sesión iniciada", "Not signed in")}</p><button type="button" class="btn btn-ghost btn-sm" data-act="${user ? "account" : "auth"}">${user ? T("Mi cuenta", "My account") : T("Iniciar sesión", "Sign in")}</button></div></div>`;
+    },
+    welcome() {
+      const st = (k, icon, es, en, sample) => `<button type="button" class="pl-style" data-set="habla:${k}" aria-pressed="${settings.habla === k}"><b>${icon} ${esc(T(es, en))}</b><em>${esc(sample)}</em></button>`;
+      return `<div class="pl-welcome-pilo">${pilo("pilo-hero")}</div>
+        <div class="pl-ph" style="justify-content:center;text-align:center;padding:0"><div><h2 id="pl-panel-title">${T("¡Pura vida! Soy Pilo", "Pura vida! I'm Pilo")}</h2><p>${T("Su copiloto de IA. Antes de despegar: ¿cómo prefiere que le hable?", "Your AI copilot. Before takeoff: how would you like me to talk?")}</p></div></div>
+        <div class="pl-styles">${st("tico", "🇨🇷", "Tico amigable", "Friendly Tico", T("«¡Pura vida! Con mucho gusto le ayudo con eso.»", "“Pura vida! Happy to help you with that.”"))}${st("neutro", "🌎", "Español neutro", "Neutral Spanish", T("«¡Hola! Con gusto te ayudo con eso.»", "“Hi! I'm glad to help you with that.”"))}${st("formal", "👔", "Formal", "Formal", T("«Buenos días. Será un placer asistirle.»", "“Good morning. It will be a pleasure to assist you.”"))}</div>
+        <p class="muted" style="text-align:center">${T("Puede cambiarlo cuando quiera en Configuración.", "You can change it anytime in Settings.")}</p>
+        <button type="button" class="btn btn-primary" data-act="welcome-done">${T("✈️ Despegar", "✈️ Take off")}</button>`;
+    }
+  };
+  function openPanel(kind) {
+    panelKind = kind; $("#pl-panel-body").innerHTML = PANELS[kind]();
+    if (!panel.open) panel.showModal();
+  }
+  const refreshPanel = () => { if (panel.open && panelKind) $("#pl-panel-body").innerHTML = PANELS[panelKind](); };
+  panel.addEventListener("cancel", e => { if (panelKind === "welcome") { e.preventDefault(); } });
+  panel.addEventListener("click", async e => {
+    if (panelKind !== "welcome" && (e.target === panel || e.target.closest("[data-close]"))) return panel.close();
+    const w = e.target.closest("[data-world]");
+    if (w) { window.CBPILOT_THEME?.set("accent", w.dataset.world); return refreshPanel(); }
+    const o = e.target.closest("[data-open]"); if (o) return openPanel(o.dataset.open);
+    const st = e.target.closest("[data-set]");
+    if (st) {
+      const [k, v] = st.dataset.set.split(":");
+      if (k === "theme") window.CBPILOT_THEME?.set("theme", v);
+      if (k === "habla") { settings.habla = v; write("cbpilot-habla", v); }
+      if (k === "style") { settings.style = v; write("cbpilot-style", v); syncPickers(); }
+      if (k === "ahorro") window.CBPILOT_THEME?.set("ahorro", ahorroOn() ? "0" : "1");
+      if (k === "lang") A.setLang(v);
+      return refreshPanel();
+    }
+    const a = e.target.closest("[data-act]"); if (!a) return;
+    const act = a.dataset.act;
+    if (act === "welcome-done") { write("cbpilot-welcomed", 1); panel.close(); $("#pl-input").focus(); if (info?.requireAccount && !user) openAuth("register", true); }
+    if (act === "plans") { panel.close(); openPlans(); }
+    if (act === "account") { panel.close(); openAccount(); }
+    if (act === "auth") { panel.close(); openAuth("login"); }
+    if (act === "wipe" && confirm(T("¿Borrar todos los chats y tareas de este dispositivo? No se puede deshacer.", "Delete all chats and tasks on this device? This can't be undone."))) {
+      running.forEach(c => c.abort()); chats = []; tasks = []; current = null; saveChats(); saveTasks(); renderList(); renderThread(); paintTasks(); panel.close();
+      note(T("Listo: el historial de este dispositivo se borró.", "Done: this device's history was deleted."), true);
+    }
+  });
+  $$("[data-open]").forEach(b => b.addEventListener("click", () => { closeSide(); openPanel(b.dataset.open); }));
+  $("#pl-theme-btn").addEventListener("click", () => openPanel("worlds"));
+  $("#pl-dark-btn").addEventListener("click", () => { const d = document.documentElement.dataset.theme === "light"; window.CBPILOT_THEME?.set("theme", d ? "dark" : "light"); });
+
   // ---------------- Cuenta del cliente ----------------
   const initials = n => (n || "?").trim().split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase();
   function renderAcct() {
@@ -616,14 +723,14 @@
     $("#pl-live").textContent = T("Cerraste sesión.", "Signed out.");
   }
 
-  // Iniciar sesión / crear cuenta. "forced" = el dueño pide cuenta para usar CeBe Pilot (no se puede cerrar).
+  // Iniciar sesión / crear cuenta. "forced" = el dueño pide cuenta para usar CB Pilot (no se puede cerrar).
   let authForced = false;
   function openAuth(mode = "login", forced = false) {
     authForced = forced;
     const reg = mode === "register", dlg = $("#pl-auth");
     $("#pl-auth-body").innerHTML = `<div class="pl-auth-head"><img class="pl-auth-orb" src="/assets/img/pilo.svg" alt="" width="64" height="64">
         <h2 id="pl-auth-title">${reg ? T("Creá tu cuenta", "Create your account") : T("Bienvenido de vuelta", "Welcome back")}</h2>
-        <p class="muted">${forced ? T("Para usar CeBe Pilot necesitás una cuenta. Es gratis.", "You need an account to use CeBe Pilot. It's free.") : reg ? T("Gratis. Tu plan y tu uso te siguen en todos tus dispositivos.", "Free. Your plan and usage follow you on every device.") : T("Entrá para usar tu plan en este dispositivo.", "Sign in to use your plan on this device.")}</p>
+        <p class="muted">${forced ? T("Para usar CB Pilot necesitás una cuenta. Es gratis.", "You need an account to use CB Pilot. It's free.") : reg ? T("Gratis. Tu plan y tu uso te siguen en todos tus dispositivos.", "Free. Your plan and usage follow you on every device.") : T("Entrá para usar tu plan en este dispositivo.", "Sign in to use your plan on this device.")}</p>
         ${forced ? "" : `<button type="button" class="pl-icon pl-auth-x" data-close aria-label="${T("Cerrar", "Close")}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`}</div>
       <div class="pl-tabs" role="tablist"><button type="button" role="tab" aria-selected="${!reg}" data-tab="login">${T("Iniciar sesión", "Sign in")}</button><button type="button" role="tab" aria-selected="${reg}" data-tab="register">${T("Crear cuenta", "Create account")}</button></div>
       <form id="pl-auth-form" class="pl-auth-form" novalidate>
@@ -704,7 +811,7 @@
   $("#pl-input").addEventListener("input", grow);
   $("#pl-new").addEventListener("click", () => { const c = chatById(current); if (!c || c.messages.length) newChat(); settings.assistant = "general"; syncPickers(); setView("chat"); closeSide(); $("#pl-input").focus(); });
   $("#pl-search").addEventListener("input", e => { query = e.target.value.trim(); renderList(); });
-  $$(".pl-switch [data-view]").forEach(b => b.addEventListener("click", () => { setView(b.dataset.view); closeSide(); }));
+  $$(".pl-nav [data-view]").forEach(b => b.addEventListener("click", () => { setView(b.dataset.view); closeSide(); }));
   $("#pl-side-open").addEventListener("click", openSide);
   $("#pl-side-close").addEventListener("click", closeSide);
   scrim.addEventListener("click", closeSide);
@@ -795,7 +902,7 @@
     }
   });
 
-  A.onLang(() => { syncPickers(); renderAcct(); renderAtts(); renderList(); renderPlan(); renderPacks(); if (view === "tasks") { $("#pl-title").textContent = T("Torre de control", "Control tower"); paintTasks(); } else renderThread(); syncComposer(); });
+  A.onLang(() => { renderQuick(); refreshPanel(); syncPickers(); renderAcct(); renderAtts(); renderList(); renderPlan(); renderPacks(); if (view === "tasks") { $("#pl-title").textContent = T("Torre de control", "Control tower"); paintTasks(); } else renderThread(); syncComposer(); });
 
   // ---------------- Inicio ----------------
   // Despegue: la animación de bienvenida se ve una vez por sesión del navegador.
@@ -804,8 +911,8 @@
   if (q) { $("#pl-input").value = q.slice(0, 2000); grow(); }
   if (current && !chatById(current)) current = null;
   settings.assistant = chatById(current)?.assistant || "general";
-  syncPickers(); renderPacks(); renderList(); renderPlan();
+  syncPickers(); renderQuick(); renderPacks(); renderList(); renderPlan();
   setView(location.hash === "#tareas" ? "tasks" : "chat");
   renderThread(true);
-  refreshStatus().then(pump);
+  refreshStatus().then(() => { pump(); if (!read("cbpilot-welcomed", 0) && !$("#pl-auth").open) openPanel("welcome"); });
 })();

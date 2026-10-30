@@ -1,10 +1,10 @@
 @echo off
 chcp 65001 >nul
-title CeBe Pilot - vista en tu computadora
+title CB Pilot - vista en tu computadora
 cd /d "%~dp0"
 echo.
 echo  ==============================================
-echo    CeBe Pilot - vista en tu computadora
+echo    CB Pilot - vista en tu computadora
 echo  ==============================================
 echo.
 where node >nul 2>nul
@@ -32,7 +32,7 @@ set "PILOT_DEADLINE_MS=600000"
 echo.
 echo  Chat:   http://localhost:8899
 echo  Panel:  http://localhost:8899/admin/   (codigo de configuracion: codigo-local-123^)
-echo  Para cerrar CeBe Pilot, cerra esta ventana.
+echo  Para cerrar CB Pilot, cerra esta ventana.
 echo  Lo que hagas aqui se borra al cerrar (es solo para probar^).
 echo.
 start "" cmd /c "timeout /t 2 /nobreak >nul & start http://localhost:8899"

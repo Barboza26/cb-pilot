@@ -1,4 +1,4 @@
-# CeBe Pilot — plan, costos e ideas
+# CB Pilot — plan, costos e ideas
 
 ## 1. Proveedor recomendado: Claude (Anthropic)
 
@@ -76,7 +76,7 @@ Casi nadie usa el 100 %, pero si vendés Pro y Max conviene que el precio cubra 
 | Idea | Viabilidad | Nota |
 |---|---|---|
 | Editar la landing con instrucciones y ver versiones | ✅ | |
-| Botón **«Hacerla real con CeBe Studio»** en la vista previa (abre WhatsApp de CeBe con el diseño) | ✅ | Conecta CeBe Pilot con CeBe sin mezclar los sitios. |
+| Botón **«Hacerla real con CeBe Studio»** en la vista previa (abre WhatsApp de CeBe con el diseño) | ✅ | Conecta CB Pilot con CeBe sin mezclar los sitios. |
 | Publicar la landing en un enlace temporal | ⚠️ | Necesita moderación. |
 
 ### C. Tareas y agentes
@@ -91,7 +91,7 @@ Casi nadie usa el 100 %, pero si vendés Pro y Max conviene que el precio cubra 
 |---|---|---|
 | **Pago automático de planes** (tarjeta o SINPE con verificación) que crea y envía el código solo | ⚠️ | Necesita proveedor de pagos o un flujo de pedidos como el de CeBe. |
 | Prueba de Pro por 3 días | ✅ | Código de 3 días. |
-| **Widget de CeBe Pilot para otras webs** (incluida la de CeBe Studio o las de sus clientes) | ⚠️ | Servicio mensual con mucho potencial; requiere presupuesto por cliente. |
+| **Widget de CB Pilot para otras webs** (incluida la de CeBe Studio o las de sus clientes) | ⚠️ | Servicio mensual con mucho potencial; requiere presupuesto por cliente. |
 | Cuentas con enlace mágico (chats en todos tus dispositivos) | ⚠️ | Guardar chats en el servidor implica actualizar la privacidad. |
 | Plan Empresas / equipos | ⚠️ | Requiere cuentas. |
 | Referidos | ✅ | |
@@ -112,7 +112,7 @@ Casi nadie usa el 100 %, pero si vendés Pro y Max conviene que el precio cubra 
 
 ## 3. Próximos pasos recomendados
 1. Publicar el sitio y activar la clave (ver `README.md`).
-2. Comprar un dominio propio para CeBe Pilot.
+2. Comprar un dominio propio para CB Pilot.
 3. Fotos y PDF para Pro y Max.
 4. Asistentes especializados.
 5. Pago automático de planes.

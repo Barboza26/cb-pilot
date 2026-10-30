@@ -1,4 +1,4 @@
-/* CeBe Pilot — la aplicación de chat (index.html, lógica en assets/js/pilot.js) */
+/* CB Pilot — la aplicación de chat (index.html, lógica en assets/js/pilot.js) */
 body.pilot-body{height:100dvh;overflow:hidden}
 .pilot{--side:284px;display:grid;grid-template-columns:var(--side) minmax(0,1fr);height:100dvh;position:relative}
 .pilot.has-canvas{grid-template-columns:var(--side) minmax(0,1fr) minmax(380px,46%)}
@@ -14,9 +14,6 @@ body.pilot-body{height:100dvh;overflow:hidden}
 .pl-side-top{display:flex;gap:.4rem}
 .pl-new{flex:1;display:flex;align-items:center;gap:.55rem;padding:.75rem 1rem;border-radius:14px;border:1px solid var(--line-strong);background:linear-gradient(135deg,rgba(var(--a1),.28),rgba(var(--a2),.08));font-weight:600;transition:transform .2s,box-shadow .2s}
 .pl-new:hover{transform:translateY(-1px);box-shadow:var(--glow)}
-.pl-switch{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:var(--glass);border:1px solid var(--line)}
-.pl-switch button{display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.5rem;border-radius:9px;font-size:.85rem;color:var(--text-2)}
-.pl-switch button[aria-pressed="true"]{background:var(--blue);color:#fff}
 .pl-search{display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border-radius:12px;border:1px solid var(--line);background:rgba(var(--bg-rgb),.6);color:var(--gray)}
 .pl-search input{flex:1;min-width:0;background:none;border:0;outline:none;font-size:.88rem;color:var(--white)}
 .pl-list{flex:1;overflow-y:auto;min-height:0;display:grid;align-content:start;gap:2px;margin:0 -.3rem;padding:0 .3rem;scrollbar-width:thin}
@@ -371,3 +368,121 @@ body.pilot-body{height:100dvh;overflow:hidden}
 .pl-auth-orb{width:64px;height:64px}
 
 @media (prefers-reduced-motion:reduce){.pl-splash{display:none}.pilo-hero,.pilo .pilo-lid,.pilo-hero .pilo-wing,.pl-main::after,.pl-msg.bot.is-live .pilo,.pl-msg.bot.is-live .pilo-wing{animation:none}}
+
+/* =====================================================================
+   Rediseño visual (Fase 2): menú, marca, inicio, acciones rápidas, paneles
+   ===================================================================== */
+.pl-brand .logo{gap:.65rem}
+.pl-nav{display:grid;gap:2px}
+.pl-nav button{display:flex;align-items:center;gap:.7rem;width:100%;padding:.6rem .7rem;border-radius:11px;font-size:.9rem;color:var(--text-2);text-align:left;transition:background .2s,color .2s}
+.pl-nav button svg{flex:none;opacity:.85}
+.pl-nav button:hover{background:rgba(var(--a2),.08);color:var(--strong)}
+.pl-nav button[aria-pressed="true"]{background:linear-gradient(90deg,rgba(var(--a1),.28),rgba(var(--a1),.06));color:var(--strong);box-shadow:inset 2px 0 0 var(--cyan)}
+.pl-cebe{display:flex;align-items:center;gap:.6rem;padding:.55rem .6rem;border-radius:12px;border:1px solid var(--line);background:rgba(var(--bg-rgb),.4);transition:border-color .2s}
+.pl-cebe:hover{border-color:var(--line-strong)}
+.pl-cebe img{width:26px;height:26px}
+.pl-cebe span{display:grid;line-height:1.15}
+.pl-cebe b{font:700 .82rem var(--f-title)}
+.pl-cebe small{font:700 .55rem/1.2 var(--f-mono);letter-spacing:.26em;text-transform:uppercase;color:var(--gray)}
+.pl-splash .wm{font-size:1.9rem}
+
+/* Inicio: tarjeta de vidrio con Pilo y la caja de texto al centro */
+/* "safe": si no entra (celular), se alinea arriba y se puede desplazar, sin tapar la barra superior */
+.pl-view.is-empty{justify-content:safe center}
+.pl-view.is-empty .pl-scroll{flex:0 1 auto;overflow-y:auto}
+.pl-view.is-empty .pl-thread{padding-bottom:1rem}
+.pl-hello{position:relative;padding:clamp(1rem,4vh,2.4rem) 1.2rem 0}
+.pl-hello h2{font-size:clamp(2rem,5vw,3.2rem)}
+.pl-hello .pl-sub{font:600 clamp(1.05rem,2.2vw,1.35rem)/1.3 var(--f-title);color:var(--strong);margin-top:-.4rem}
+.pl-hello p.pl-lead{color:var(--text-2);max-width:48ch}
+.pl-quick{display:none;width:min(820px,100% - 2rem);margin:.7rem auto 0;flex-wrap:wrap;justify-content:center;gap:.45rem}
+.pl-view.is-empty .pl-quick{display:flex}
+.pl-qa{display:inline-flex;align-items:center;gap:.45rem;padding:.5rem .85rem;border-radius:999px;border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(10px);font-size:.82rem;color:var(--text-2);transition:border-color .2s,color .2s,transform .2s}
+.pl-qa:hover{border-color:var(--line-strong);color:var(--strong);transform:translateY(-1px)}
+.pl-examples{display:flex;flex-wrap:wrap;justify-content:center;gap:.4rem;margin-top:.2rem}
+.pl-ex{font-size:.8rem;color:var(--gray);padding:.3rem .7rem;border-radius:999px;border:1px dashed var(--line)}
+.pl-ex:hover{color:var(--strong);border-style:solid;border-color:var(--line-strong)}
+
+/* Mensajes: nombre de Pilo y respuestas en tarjeta suave */
+.pl-msg.bot .pl-body{padding:.2rem 0 .1rem}
+.pl-who{display:flex;align-items:center;gap:.5rem;font:700 .74rem/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);margin-bottom:.45rem}
+.pl-msg.user .pl-bubble{box-shadow:0 10px 30px -18px rgba(var(--a1),.9)}
+
+/* Paneles (mundos, cabina, configuración, bienvenida) */
+.pl-panel{width:min(860px,94vw)}
+.pl-panel .pd-in{gap:1.1rem}
+.pl-ph{position:relative;display:flex;align-items:flex-start;gap:1rem;padding-right:2.5rem}
+.pl-ph h2{font-size:clamp(1.4rem,3vw,1.9rem)}
+.pl-ph p{color:var(--gray);font-size:.9rem;margin-top:.25rem}
+.pl-ph .pl-auth-x{top:0;right:0}
+.pl-sec{display:grid;gap:.6rem;padding:1rem;border-radius:16px;border:1px solid var(--line);background:var(--glass)}
+.pl-sec h3{font:700 .7rem/1 var(--f-mono);letter-spacing:.16em;text-transform:uppercase;color:var(--gray)}
+.pl-seg3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pl-seg3 button{padding:.65rem .5rem;border-radius:12px;border:1px solid var(--line);background:rgba(var(--bg-rgb),.35);font-size:.86rem;color:var(--text-2)}
+.pl-seg3 button[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:#fff}
+.pl-row{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.pl-row p{font-size:.85rem;color:var(--gray)}
+.pl-switchbtn{position:relative;width:46px;height:26px;flex:none;border-radius:999px;background:rgba(148,163,184,.3);transition:background .2s}
+.pl-switchbtn::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s}
+.pl-switchbtn[aria-checked="true"]{background:var(--blue)}
+.pl-switchbtn[aria-checked="true"]::after{transform:translateX(20px)}
+
+/* Mundos */
+.pl-worlds{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.8rem}
+.pl-world{position:relative;display:grid;grid-template-rows:110px auto;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:var(--glass);text-align:left;transition:transform .2s,border-color .2s,box-shadow .2s}
+.pl-world:hover{transform:translateY(-2px);border-color:var(--line-strong)}
+.pl-world[aria-pressed="true"]{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(var(--a2),.35)}
+.pl-world .wp{position:relative;overflow:hidden}
+.pl-world .wp img{position:absolute;right:8px;bottom:6px;width:52px;height:52px;filter:drop-shadow(0 6px 10px rgba(0,0,0,.4))}
+.pl-world .wb{padding:.7rem .8rem .8rem;display:grid;gap:.2rem}
+.pl-world b{font:700 .95rem var(--f-title)}
+.pl-world small{font-size:.76rem;color:var(--gray);line-height:1.35}
+.pl-world .tag{position:absolute;top:8px;left:8px;font:700 .58rem/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;padding:.3rem .45rem;border-radius:999px;background:rgba(7,13,28,.7);color:#fff}
+.wp-original{background:radial-gradient(circle at 70% 30%,rgba(56,189,248,.5),transparent 45%),linear-gradient(160deg,#101D38,#070D1C);background-color:#070D1C}
+.wp-original::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(56,189,248,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.18) 1px,transparent 1px);background-size:18px 18px}
+.wp-selva{background:radial-gradient(ellipse at 30% 0,rgba(253,224,71,.55),transparent 40%),linear-gradient(180deg,#14532d,#052e16)}
+.wp-selva::before{content:"";position:absolute;inset:auto 0 0 0;height:70%;background:radial-gradient(40% 60% at 15% 100%,#166534,transparent),radial-gradient(35% 70% at 55% 100%,#15803d,transparent),radial-gradient(40% 55% at 95% 100%,#14532d,transparent)}
+.wp-arenal{background:linear-gradient(180deg,#fdba74 0%,#fb923c 30%,#7c2d12 100%)}
+.wp-arenal::before{content:"";position:absolute;left:18%;bottom:0;width:60%;height:78%;background:linear-gradient(180deg,#44403c,#1c1917);clip-path:polygon(42% 0,58% 0,100% 100%,0 100%)}
+.wp-caribe{background:linear-gradient(180deg,#7dd3fc 0%,#bae6fd 45%,#2dd4bf 55%,#0d9488 75%,#fde68a 76%,#fcd34d 100%)}
+.wp-pacifico{background:radial-gradient(circle at 50% 62%,#fde047 0 9%,transparent 10%),linear-gradient(180deg,#7c3aed 0%,#ec4899 35%,#fb923c 58%,#1e1b4b 62%,#312e81 100%)}
+.wp-bandera{background:linear-gradient(180deg,#002B7F 0 17%,#fff 17% 33%,#CE1126 33% 67%,#fff 67% 83%,#002B7F 83%)}
+.wp-bandera::before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 40%,rgba(255,255,255,.35) 50%,transparent 60%)}
+
+/* Cabina de mando */
+.pl-cab{display:grid;grid-template-columns:240px minmax(0,1fr);gap:1rem}
+.pl-ring{display:grid;place-items:center;gap:.4rem;text-align:center;padding:1rem;border-radius:16px;border:1px solid var(--line);background:var(--glass)}
+.pl-ring svg{width:150px;height:150px}
+.pl-ring .rv{font:800 2rem/1 var(--f-title)}
+.pl-ring small{color:var(--gray);font-size:.78rem}
+.pl-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem}
+.pl-mode{display:grid;gap:.35rem;align-content:start;padding:1rem;border-radius:16px;border:1px solid var(--line);text-align:left;transition:transform .2s,border-color .2s,box-shadow .2s}
+.pl-mode:hover{transform:translateY(-2px)}
+.pl-mode .mi{font-size:1.5rem}
+.pl-mode b{font:700 1rem var(--f-title)}
+.pl-mode small{color:var(--text-2);font-size:.78rem;line-height:1.4}
+.pl-mode.m-crucero{background:linear-gradient(160deg,rgba(37,99,235,.35),rgba(37,99,235,.08))}
+.pl-mode.m-turbo{background:linear-gradient(160deg,rgba(168,85,247,.35),rgba(168,85,247,.08))}
+.pl-mode.m-ahorro{background:linear-gradient(160deg,rgba(34,197,94,.3),rgba(34,197,94,.07))}
+.pl-mode[aria-pressed="true"],.pl-mode[aria-checked="true"]{border-color:var(--strong);box-shadow:0 0 0 2px rgba(var(--a2),.3)}
+.pl-mode .st{font:700 .6rem/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--cyan)}
+.pl-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem}
+.pl-stat{padding:.8rem;border-radius:14px;border:1px solid var(--line);background:rgba(var(--bg-rgb),.35)}
+.pl-stat small{display:block;font-size:.72rem;color:var(--gray)}
+.pl-stat b{font:700 1.05rem var(--f-title)}
+
+/* Bienvenida (primer ingreso) */
+.pl-welcome-pilo{width:110px;height:110px;margin:0 auto}
+.pl-styles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem}
+.pl-style{display:grid;gap:.4rem;padding:1rem;border-radius:16px;border:1px solid var(--line);background:var(--glass);text-align:left}
+.pl-style[aria-pressed="true"]{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(var(--a2),.3)}
+.pl-style b{font:700 1rem var(--f-title)}
+.pl-style em{font-style:normal;font-size:.82rem;color:var(--text-2);line-height:1.45}
+
+@media (max-width:760px){.pl-worlds,.pl-modes,.pl-styles{grid-template-columns:1fr 1fr}.pl-cab{grid-template-columns:1fr}.pl-stats{grid-template-columns:1fr 1fr}}
+@media (max-width:480px){.pl-worlds,.pl-styles{grid-template-columns:1fr}.pl-modes{grid-template-columns:1fr}.pl-hello .pl-pilo{width:110px;height:110px}.pilo-hero{width:96px;height:96px}.pl-hello{padding-top:.6rem}.pl-examples{display:none}.pl-qa{font-size:.78rem;padding:.45rem .7rem}}
+
+/* Modo Ahorro: se apagan animaciones de ambiente (la app sigue igual) */
+[data-ahorro] .pl-splash{display:none}
+[data-ahorro] .pl-main::after,[data-ahorro] .pl-main::before{display:none}
+[data-ahorro] .pilo,[data-ahorro] .pilo *,[data-ahorro] .pl-composer,[data-ahorro] .pl-hello .grad,[data-ahorro] .pl-pilo::after,[data-ahorro] .pl-orb::before{animation:none!important}

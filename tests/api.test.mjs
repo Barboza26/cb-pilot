@@ -1,4 +1,4 @@
-// Pruebas de la API de CeBe Pilot con base de datos en memoria y una IA simulada (no gasta dinero ni usa internet).
+// Pruebas de la API de CB Pilot con base de datos en memoria y una IA simulada (no gasta dinero ni usa internet).
 import { test, before } from "node:test";
 import assert from "node:assert/strict";
 import { setStoreFactory, memoryFactory, putJSON } from "../netlify/lib/db.mjs";
@@ -40,7 +40,7 @@ test("salud y rutas desconocidas", async () => {
   assert.equal((await call("GET", "/api/nada")).status, 404);
 });
 
-test("sin ANTHROPIC_API_KEY, CeBe Pilot avisa que no está activado y no cobra mensajes", async () => {
+test("sin ANTHROPIC_API_KEY, CB Pilot avisa que no está activado y no cobra mensajes", async () => {
   const s = await call("POST", "/api/pilot/status", {});
   assert.equal(s.status, 200);
   assert.equal(s.data.plan, "gratis");
@@ -58,14 +58,14 @@ test("responde en streaming con el modelo del plan gratis y descuenta un mensaje
   const r = await call("POST", "/api/pilot/chat", user("Hola, ¿qué podés hacer?"), { ip: "10.1.0.2" });
   assert.equal(r.status, 200);
   assert.equal(r.events[0].t, "start");
-  assert.match(r.text, /CeBe Pilot/);
+  assert.match(r.text, /CB Pilot/);
   assert.equal(r.done.stop, "end_turn");
   assert.equal(r.done.cont, null);
   assert.equal(r.done.remaining, DEFAULT_CONFIG.freePerDay - 1);
   const p = fake.calls.at(-1);
   assert.equal(p.model, "claude-haiku-5-5");
   assert.equal(p.betas, undefined, "Haiku no usa el parámetro fallbacks");
-  assert.match(p.system[0].text, /CeBe Pilot/);
+  assert.match(p.system[0].text, /CB Pilot/);
   assert.match(p.system[0].text, /CeBe Studio/, "sabe recomendar a CeBe Studio cuando aplique");
   assert.ok(p.system[0].cache_control);
 });
