@@ -524,7 +524,7 @@
   // Mundos: hoy cambian la paleta y la iluminación; los paisajes animados llegan en las próximas fases.
   const WORLDS = [
     ["original", "CB Pilot Original", "CB Pilot Original", "La cabina tecnológica de CeBe Studio: azul profundo y luz eléctrica.", "CeBe Studio's tech cockpit: deep blue and electric light."],
-    ["selva", "Selva costarricense", "Costa Rican rainforest", "Verdes del bosque tropical con destellos de sol.", "Tropical forest greens with sun flares."],
+    ["selva", "Selva costarricense", "Costa Rican rainforest", "Paisaje vivo: cascada, niebla y hojas; de noche, luciérnagas.", "Living landscape: waterfall, mist and leaves; fireflies at night."],
     ["arenal", "Volcán Arenal", "Arenal Volcano", "Tonos cálidos de lava, roca y atardecer.", "Warm lava, rock and dusk tones."],
     ["caribe", "Caribe costarricense", "Costa Rican Caribbean", "Turquesa del mar y arena tropical.", "Turquoise sea and tropical sand."],
     ["pacifico", "Atardecer del Pacífico", "Pacific sunset", "Naranjas, rosados y violetas del atardecer.", "Sunset oranges, pinks and violets."],
@@ -656,7 +656,7 @@
       const ac = window.CBPILOT_THEME?.accent || "original";
       return `<div class="pl-ph"><div><span class="eyebrow">CB Pilot</span><h2 id="pl-panel-title">${T("Explorar mundos", "Explore worlds")}</h2><p>${T("Elija el ambiente de su cabina. Todos están incluidos en todos los planes.", "Pick your cockpit's ambience. All of them are included in every plan.")}</p></div>${closeX}</div>
         <div class="pl-worlds">${WORLDS.map(([k, es, en, des, den]) => `<button type="button" class="pl-world" data-world="${k}" aria-pressed="${ac === k}"><span class="wp wp-${k}">${ac === k ? `<span class="tag">${T("Activo", "Active")}</span>` : ""}<img src="/assets/img/pilo-emblema.svg" alt=""></span><span class="wb"><b>${esc(T(es, en))}</b><small>${esc(T(des, den))}</small></span></button>`).join("")}</div>
-        <p class="muted">${T("Por ahora cada mundo cambia la paleta y la iluminación. Los paisajes animados (selva, volcán, playa…) llegan en las próximas fases, empezando por la Selva.", "For now each world changes the palette and lighting. Animated landscapes (rainforest, volcano, beach…) arrive in the next phases, starting with the Rainforest.")}</p>`;
+        <p class="muted">${T("La Selva ya es un paisaje vivo que cambia de día a noche según la hora de Costa Rica. Los demás mundos por ahora cambian la paleta; sus paisajes llegan en las próximas fases.", "The Rainforest is now a living landscape that changes from day to night on Costa Rica time. The other worlds change the palette for now; their landscapes arrive in upcoming phases.")}</p>`;
     },
     cabina() {
       const pct = info?.perDay ? Math.min(100, Math.round(info.usedToday / info.perDay * 100)) : null;
