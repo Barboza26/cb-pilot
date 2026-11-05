@@ -26,6 +26,8 @@
   // Pilo, la lapa copiloto: el emblema oficial (assets/img/pilo-emblema.svg). Las poses animadas llegan en la Fase 3.
   const PILO = `<img class="pilo __CLS__" src="/assets/img/pilo-emblema.svg" alt="" aria-hidden="true" draggable="false" width="128" height="128">`;
   const pilo = (cls = "") => PILO.replace("__CLS__", cls);
+  // Bandera dibujada (los emojis de banderas no se ven en Windows: salen como «CR»). Proporción oficial 3:5, franjas 1:1:2:1:1.
+  const CR_FLAG = '<svg class="cr-flag" viewBox="0 0 10 6" aria-hidden="true"><rect width="10" height="6" fill="#002B7F"/><rect y="1" width="10" height="4" fill="#fff"/><rect y="2" width="10" height="2" fill="#CE1126"/></svg>';
 
   // ---------------- Pilo: poses que reaccionan a lo que pasa (Fase 3) ----------------
   // saludar (inicio) · idea (mientras usted escribe) · pensar → procesar (mientras responde) · celebrar (respuesta lista)
@@ -325,7 +327,7 @@
   function hello() {
     const warn = offline || (info && !info.available ? info.reason : "");
     return `<div class="pl-hello"><div class="pl-pilo">${poseImg("pilo-hero" + (arrived || arriving ? "" : (arriving = true, " is-arriving")))}</div>
-      <span class="pl-badge">🇨🇷 ${T("Hecho en Costa Rica", "Made in Costa Rica")}</span>
+      <span class="pl-badge">${CR_FLAG} ${T("Hecho en Costa Rica", "Made in Costa Rica")}</span>
       <h2>${user ? T(`¡Pura vida, <span class='grad'>${esc(firstName())}</span>!`, `Pura vida, <span class='grad'>${esc(firstName())}</span>!`) : T("¡Pura <span class='grad'>vida</span>!", "Pura <span class='grad'>vida</span>!")}</h2>
       <p class="pl-sub">${T("Soy Pilo, su copiloto de IA", "I'm Pilo, your AI copilot")}</p>
       <p class="pl-lead">${T("Le ayudo a conversar, aprender, crear, programar y sacar adelante sus proyectos.", "I help you chat, learn, create, code and move your projects forward.")}</p>
@@ -524,11 +526,11 @@
   // Mundos: hoy cambian la paleta y la iluminación; los paisajes animados llegan en las próximas fases.
   const WORLDS = [
     ["original", "CB Pilot Original", "CB Pilot Original", "La cabina tecnológica de CeBe Studio: azul profundo y luz eléctrica.", "CeBe Studio's tech cockpit: deep blue and electric light."],
-    ["selva", "Selva costarricense", "Costa Rican rainforest", "Paisaje vivo: cascada, niebla y hojas; de noche, luciérnagas.", "Living landscape: waterfall, mist and leaves; fireflies at night."],
-    ["arenal", "Volcán Arenal", "Arenal Volcano", "Tonos cálidos de lava, roca y atardecer.", "Warm lava, rock and dusk tones."],
-    ["caribe", "Caribe costarricense", "Costa Rican Caribbean", "Turquesa del mar y arena tropical.", "Turquoise sea and tropical sand."],
-    ["pacifico", "Atardecer del Pacífico", "Pacific sunset", "Naranjas, rosados y violetas del atardecer.", "Sunset oranges, pinks and violets."],
-    ["bandera", "Bandera de Costa Rica", "Costa Rican flag", "Azul, blanco y rojo con estética tecnológica.", "Blue, white and red with a tech look."]
+    ["selva", "Selva costarricense", "Costa Rican rainforest", "Valle de bosque nuboso con río, cascada y neblina.", "Cloud-forest valley with a river, waterfall and mist."],
+    ["arenal", "Volcán Arenal", "Arenal Volcano", "El cono del volcán sobre la laguna, rodeado de selva.", "The volcano cone over the lake, surrounded by rainforest."],
+    ["caribe", "Caribe costarricense", "Costa Rican Caribbean", "Mar turquesa, arena clara y palmeras.", "Turquoise sea, pale sand and palm trees."],
+    ["pacifico", "Atardecer del Pacífico", "Pacific sunset", "El sol sobre el horizonte y su reflejo dorado.", "The sun on the horizon and its golden reflection."],
+    ["bandera", "Bandera de Costa Rica", "Costa Rican flag", "La bandera con sus proporciones y colores oficiales.", "The flag with its official proportions and colors."]
   ];
   function syncPickers() {
     const m = MODES[settings.style], a = ASSIST[settings.assistant] || ASSIST.general;
@@ -656,7 +658,7 @@
       const ac = window.CBPILOT_THEME?.accent || "original";
       return `<div class="pl-ph"><div><span class="eyebrow">CB Pilot</span><h2 id="pl-panel-title">${T("Explorar mundos", "Explore worlds")}</h2><p>${T("Elija el ambiente de su cabina. Todos están incluidos en todos los planes.", "Pick your cockpit's ambience. All of them are included in every plan.")}</p></div>${closeX}</div>
         <div class="pl-worlds">${WORLDS.map(([k, es, en, des, den]) => `<button type="button" class="pl-world" data-world="${k}" aria-pressed="${ac === k}"><span class="wp wp-${k}">${ac === k ? `<span class="tag">${T("Activo", "Active")}</span>` : ""}<img src="/assets/img/pilo-emblema.svg" alt=""></span><span class="wb"><b>${esc(T(es, en))}</b><small>${esc(T(des, den))}</small></span></button>`).join("")}</div>
-        <p class="muted">${T("La Selva ya es un paisaje vivo que cambia de día a noche según la hora de Costa Rica. Los demás mundos por ahora cambian la paleta; sus paisajes llegan en las próximas fases.", "The Rainforest is now a living landscape that changes from day to night on Costa Rica time. The other worlds change the palette for now; their landscapes arrive in upcoming phases.")}</p>`;
+        <p class="muted">${T("Cada mundo tiene su propio paisaje, con una versión para computadora y otra para celular. Puede cambiarlo cuando quiera: la conversación no se pierde.", "Each world has its own landscape, with a desktop and a phone version. Switch anytime: your conversation stays.")}</p>`;
     },
     cabina() {
       const pct = info?.perDay ? Math.min(100, Math.round(info.usedToday / info.perDay * 100)) : null;
@@ -685,7 +687,7 @@
       return `<div class="pl-ph"><div><span class="eyebrow">CB Pilot</span><h2 id="pl-panel-title">${T("Configuración", "Settings")}</h2><p>${T("Se guarda en este dispositivo.", "Saved on this device.")}</p></div>${closeX}</div>
         <div class="pl-sec"><h3>${T("Apariencia", "Appearance")}</h3>${seg3("theme", th, [["dark", T("🌙 Oscuro", "🌙 Dark")], ["light", T("☀️ Claro", "☀️ Light")], ["system", T("💻 Sistema", "💻 System")]])}
           <div class="pl-row"><p>${T("Mundo actual", "Current world")}: <b>${esc(T(...(WORLDS.find(w => w[0] === (window.CBPILOT_THEME?.accent || "original")) || WORLDS[0]).slice(1, 3)))}</b></p><button type="button" class="btn btn-ghost btn-sm" data-open="worlds">${T("Explorar mundos", "Explore worlds")}</button></div></div>
-        <div class="pl-sec"><h3>${T("Cómo habla Pilo", "How Pilo talks")}</h3>${seg3("habla", settings.habla, [["tico", "🇨🇷 Tico"], ["neutro", T("🌎 Neutro", "🌎 Neutral")], ["formal", "👔 Formal"]])}
+        <div class="pl-sec"><h3>${T("Cómo habla Pilo", "How Pilo talks")}</h3>${seg3("habla", settings.habla, [["tico", CR_FLAG + " Tico"], ["neutro", T("🌎 Neutro", "🌎 Neutral")], ["formal", "👔 Formal"]])}
           <p class="muted">${T("En documentos legales, cartas o textos profesionales siempre usa un tono formal.", "Legal documents, letters and professional texts always use a formal tone.")}</p></div>
         <div class="pl-sec"><div class="pl-row"><div><h3>${T("Modo Ahorro", "Saver mode")}</h3><p>${T("Menos animaciones y efectos. Recomendado en celulares con poca batería.", "Fewer animations and effects. Recommended on phones with low battery.")}</p></div><button type="button" class="pl-switchbtn" role="switch" aria-checked="${ahorroOn()}" data-set="ahorro:toggle" aria-label="${T("Modo Ahorro", "Saver mode")}"></button></div></div>
         <div class="pl-sec"><h3>${T("Idioma de la interfaz", "Interface language")}</h3>${seg3("lang", A.lang, [["es", "Español"], ["en", "English"]])}</div>
@@ -696,7 +698,7 @@
       const st = (k, icon, es, en, sample) => `<button type="button" class="pl-style" data-set="habla:${k}" aria-pressed="${settings.habla === k}"><b>${icon} ${esc(T(es, en))}</b><em>${esc(sample)}</em></button>`;
       return `<div class="pl-welcome-pilo">${pilo("pilo-hero")}</div>
         <div class="pl-ph" style="justify-content:center;text-align:center;padding:0"><div><h2 id="pl-panel-title">${T("¡Pura vida! Soy Pilo", "Pura vida! I'm Pilo")}</h2><p>${T("Su copiloto de IA. Antes de despegar: ¿cómo prefiere que le hable?", "Your AI copilot. Before takeoff: how would you like me to talk?")}</p></div></div>
-        <div class="pl-styles">${st("tico", "🇨🇷", "Tico amigable", "Friendly Tico", T("«¡Pura vida! Con mucho gusto le ayudo con eso.»", "“Pura vida! Happy to help you with that.”"))}${st("neutro", "🌎", "Español neutro", "Neutral Spanish", T("«¡Hola! Con gusto te ayudo con eso.»", "“Hi! I'm glad to help you with that.”"))}${st("formal", "👔", "Formal", "Formal", T("«Buenos días. Será un placer asistirle.»", "“Good morning. It will be a pleasure to assist you.”"))}</div>
+        <div class="pl-styles">${st("tico", CR_FLAG, "Tico amigable", "Friendly Tico", T("«¡Pura vida! Con mucho gusto le ayudo con eso.»", "“Pura vida! Happy to help you with that.”"))}${st("neutro", "🌎", "Español neutro", "Neutral Spanish", T("«¡Hola! Con gusto te ayudo con eso.»", "“Hi! I'm glad to help you with that.”"))}${st("formal", "👔", "Formal", "Formal", T("«Buenos días. Será un placer asistirle.»", "“Good morning. It will be a pleasure to assist you.”"))}</div>
         <p class="muted" style="text-align:center">${T("Puede cambiarlo cuando quiera en Configuración.", "You can change it anytime in Settings.")}</p>
         <button type="button" class="btn btn-primary" data-act="welcome-done">${T("✈️ Despegar", "✈️ Take off")}</button>`;
     }
