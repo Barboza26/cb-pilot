@@ -108,11 +108,11 @@ async function codeRecord(id) {
 /** Canjea un código por un pase firmado que el navegador guarda. */
 /** Con sesión iniciada, el plan queda en la cuenta (sirve en todos sus dispositivos); sin sesión, en este dispositivo. */
 export async function activate(code, user = null) {
-  if (normCode(code).length < 10) fail(400, "bad_code", "Escribí el código completo (CBP-XXXX-XXXX-XXXX).");
+  if (normCode(code).length < 10) fail(400, "bad_code", "Escriba el código completo (CBP-XXXX-XXXX-XXXX).");
   const id = codeId(code);
   const rec = await codeRecord(id);
   if (!rec) fail(403, "bad_code", "Código inválido, vencido o desactivado.");
-  if (rec.userId && rec.userId !== user?.id) fail(409, "code_taken", "Este código ya está vinculado a otra cuenta. Iniciá sesión con esa cuenta.");
+  if (rec.userId && rec.userId !== user?.id) fail(409, "code_taken", "Este código ya está vinculado a otra cuenta. Inicie sesión con esa cuenta.");
   await update("pilot", `codes/${id}`, r => { r.activations = (r.activations || 0) + 1; r.lastUsedAt = now(); if (user) { r.userId = user.id; r.userEmail = user.email; } return r; });
   if (user) { await setPlan(user.id, rec.plan, rec.expiresAt, id); return { plan: rec.plan, expiresAt: rec.expiresAt, account: true }; }
   const pass = await sign({ k: "pilot", id, plan: rec.plan, exp: Date.parse(rec.expiresAt) });
@@ -125,7 +125,7 @@ export async function activate(code, user = null) {
  */
 async function resolvePlan(req, ctx, pass) {
   const user = await currentUser(req);
-  if (user?.blocked) fail(403, "blocked", "Tu cuenta está bloqueada. Escribinos por WhatsApp para ayudarte.");
+  if (user?.blocked) fail(403, "blocked", "Su cuenta está bloqueada. Escríbanos por WhatsApp y le ayudamos.");
   if (user) {
     let plan = activePlan(user);
     if (plan !== "gratis" && user.planCodeId && !(await codeRecord(user.planCodeId))) plan = "gratis"; // el dueño desactivó el código
@@ -157,10 +157,10 @@ export async function spend() {
   return r?.data || { usd: 0, msgs: 0, in: 0, out: 0, plans: {} };
 }
 function budgetGate(plan, cfg, s) {
-  if (!cfg.enabled) fail(503, "pilot_paused", "CB Pilot está en mantenimiento. Volvé en un rato.");
+  if (!cfg.enabled) fail(503, "pilot_paused", "CB Pilot está en mantenimiento. Vuelva en un ratito.");
   if (!keyConfigured()) fail(503, "pilot_off", "CB Pilot todavía no está activado en este sitio.");
-  if (s.usd >= cfg.budgetUsd) fail(503, "budget", "CB Pilot alcanzó su límite de uso de este mes. Escribinos por WhatsApp y te ayudamos.");
-  if (plan === "gratis" && s.usd >= cfg.budgetUsd * cfg.freeShare) fail(503, "free_paused", "El plan gratis llegó a su límite este mes. Con un plan Pro o Max seguís usando CB Pilot.");
+  if (s.usd >= cfg.budgetUsd) fail(503, "budget", "CB Pilot alcanzó su límite de uso de este mes. Escríbanos por WhatsApp y le ayudamos.");
+  if (plan === "gratis" && s.usd >= cfg.budgetUsd * cfg.freeShare) fail(503, "free_paused", "El plan gratis llegó a su límite este mes. Con un plan Pro o Max puede seguir usando CB Pilot.");
 }
 async function reserve(subject, lim) {
   const fn = (max, msg) => cur => { const n = (cur?.n || 0) + 1; if (max !== null && n > max) fail(429, "quota", msg); return { n }; };
@@ -306,17 +306,17 @@ function attachmentBlocks(list) {
       out.push({ type: "text", text: `<archivo nombre="${name.replace(/"/g, "'")}">\n${text}\n</archivo>` });
     } else fail(415, "bad_file", `«${name}»: tipo de archivo no soportado.`);
   }
-  if (bytes > 4.5 * 1024 * 1024) fail(413, "too_large", "Los archivos suman más de 4,5 MB. Probá con menos o más livianos.");
+  if (bytes > 4.5 * 1024 * 1024) fail(413, "too_large", "Los archivos suman más de 4,5 MB. Pruebe con menos o más livianos.");
   return out;
 }
 
 // ---------------- Conversación ----------------
 function cleanMessages(list, p) {
-  if (!Array.isArray(list) || !list.length) fail(400, "bad_messages", "Escribí un mensaje.");
+  if (!Array.isArray(list) || !list.length) fail(400, "bad_messages", "Escriba un mensaje.");
   let msgs = list.slice(-60).map(m => ({ role: m?.role === "assistant" ? "assistant" : "user", content: typeof m?.content === "string" ? m.content : "" }))
     .filter(m => m.content.trim());
   if (!msgs.length || msgs[msgs.length - 1].role !== "user") fail(400, "bad_messages", "El último mensaje debe ser tuyo.");
-  if (msgs[msgs.length - 1].content.length > p.msgChars) fail(413, "too_long", `Tu mensaje es muy largo (máximo ${p.msgChars.toLocaleString("es-CR")} caracteres en tu plan).`);
+  if (msgs[msgs.length - 1].content.length > p.msgChars) fail(413, "too_long", `Su mensaje es muy largo (máximo ${p.msgChars.toLocaleString("es-CR")} caracteres en su plan).`);
   // Memoria según el plan: se quitan los mensajes más viejos.
   let total = 0, keep = [];
   for (let i = msgs.length - 1; i >= 0; i--) {
@@ -345,7 +345,7 @@ export async function chat(req, ctx, body) {
     who = { plan: c.plan, subject: c.s }; counted = false; contN = c.n + 1;
   } else {
     who = await resolvePlan(req, ctx, body.pass);
-    if (cfg.requireAccount && !who.user) fail(401, "login_required", "Iniciá sesión o creá una cuenta gratis para usar CB Pilot.");
+    if (cfg.requireAccount && !who.user) fail(401, "login_required", "Inicie sesión o cree una cuenta gratis para usar CB Pilot.");
   }
   const p = PLANS[who.plan];
   budgetGate(who.plan, cfg, await spend());

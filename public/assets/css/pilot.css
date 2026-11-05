@@ -393,9 +393,10 @@ body.pilot-body{height:100dvh;overflow:hidden}
 .pl-view.is-empty .pl-quick{display:flex}
 .pl-qa{display:inline-flex;align-items:center;gap:.45rem;padding:.5rem .85rem;border-radius:999px;border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(10px);font-size:.82rem;color:var(--text-2);transition:border-color .2s,color .2s,transform .2s}
 .pl-qa:hover{border-color:var(--line-strong);color:var(--strong);transform:translateY(-1px)}
-.pl-examples{display:flex;flex-wrap:wrap;justify-content:center;gap:.4rem;margin-top:.2rem}
-.pl-ex{font-size:.8rem;color:var(--gray);padding:.3rem .7rem;border-radius:999px;border:1px dashed var(--line)}
-.pl-ex:hover{color:var(--strong);border-style:solid;border-color:var(--line-strong)}
+.pl-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.28rem .7rem;border-radius:999px;border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(8px);font:600 .72rem/1 var(--f-title);letter-spacing:.06em;text-transform:uppercase;color:var(--text-2);margin-bottom:-.35rem}
+.pl-hello .pl-pilo{width:132px;height:132px}
+.pilo-hero{width:112px;height:112px}
+@media (max-height:760px){.pl-hello{gap:.75rem;padding-top:.5rem}.pl-hello .pl-pilo{width:104px;height:104px}.pilo-hero{width:88px;height:88px}.pl-hello p.pl-lead{display:none}}
 
 /* Mensajes: nombre de Pilo y respuestas en tarjeta suave */
 .pl-msg.bot .pl-body{padding:.2rem 0 .1rem}
@@ -474,9 +475,27 @@ body.pilot-body{height:100dvh;overflow:hidden}
 .pl-style em{font-style:normal;font-size:.82rem;color:var(--text-2);line-height:1.45}
 
 @media (max-width:760px){.pl-worlds,.pl-modes,.pl-styles{grid-template-columns:1fr 1fr}.pl-cab{grid-template-columns:1fr}.pl-stats{grid-template-columns:1fr 1fr}}
-@media (max-width:480px){.pl-worlds,.pl-styles{grid-template-columns:1fr}.pl-modes{grid-template-columns:1fr}.pl-hello .pl-pilo{width:110px;height:110px}.pilo-hero{width:96px;height:96px}.pl-hello{padding-top:.6rem}.pl-examples{display:none}.pl-qa{font-size:.78rem;padding:.45rem .7rem}}
+@media (max-width:480px){.pl-worlds,.pl-styles{grid-template-columns:1fr}.pl-modes{grid-template-columns:1fr}.pl-hello .pl-pilo{width:110px;height:110px}.pilo-hero{width:96px;height:96px}.pl-hello{padding-top:.6rem}.pl-qa{font-size:.78rem;padding:.45rem .7rem}}
 
 /* Modo Ahorro: se apagan animaciones de ambiente (la app sigue igual) */
 [data-ahorro] .pl-splash{display:none}
 [data-ahorro] .pl-main::after,[data-ahorro] .pl-main::before{display:none}
 [data-ahorro] .pilo,[data-ahorro] .pilo *,[data-ahorro] .pl-composer,[data-ahorro] .pl-hello .grad,[data-ahorro] .pl-pilo::after,[data-ahorro] .pl-orb::before{animation:none!important}
+
+/* ---------- Fase 3: Pilo con poses ---------- */
+.pilo-pose{object-fit:contain;user-select:none;-webkit-user-drag:none}
+.pl-hello .pilo-hero.pilo-pose{width:150px;height:150px;filter:drop-shadow(0 16px 24px rgba(0,0,0,.45))}
+.is-pop{animation:pilo-pop .5s cubic-bezier(.3,1.6,.5,1)}
+.pilo-hero.is-pop{animation:pilo-pop .5s cubic-bezier(.3,1.6,.5,1),pilo-bob 3.6s ease-in-out .5s infinite}
+.pilo-hero.is-arriving{animation:pilo-arrive 1.25s cubic-bezier(.2,.8,.3,1) both}
+@keyframes pilo-pop{0%{transform:scale(.82) translateY(6px)}100%{transform:none}}
+@keyframes pilo-arrive{0%{transform:translate(55vw,-40vh) rotate(18deg) scale(.5);opacity:0}25%{opacity:1}75%{transform:translate(0,-14px) rotate(-6deg) scale(1.03)}100%{transform:none}}
+.pl-dock{position:absolute;right:22px;top:-74px;width:86px;height:86px;pointer-events:none;z-index:2;filter:drop-shadow(0 10px 14px rgba(0,0,0,.45));transition:opacity .3s}
+.pl-view.is-empty .pl-dock{opacity:0;visibility:hidden}
+.pl-view:not(.is-empty) .pl-thread{padding-bottom:4.8rem}
+.is-thinking .pl-dock{animation:pilo-bob 1.4s ease-in-out infinite}
+.is-thinking .pl-dock.is-pop{animation:pilo-pop .5s cubic-bezier(.3,1.6,.5,1),pilo-bob 1.4s ease-in-out .5s infinite}
+@media (max-width:480px){.pl-hello .pilo-hero.pilo-pose{width:118px;height:118px}.pl-dock{width:64px;height:64px;top:-54px;right:12px}}
+@media (max-height:760px){.pl-hello .pilo-hero.pilo-pose{width:120px;height:120px}}
+@media (prefers-reduced-motion:reduce){.is-pop,.pilo-hero.is-pop,.pilo-hero.is-arriving,.is-thinking .pl-dock,.is-thinking .pl-dock.is-pop{animation:none}}
+[data-ahorro] .pl-dock,[data-ahorro] .pilo-pose{animation:none!important}

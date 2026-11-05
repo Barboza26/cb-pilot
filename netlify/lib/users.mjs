@@ -28,11 +28,11 @@ async function byId(id) { return id ? (await getJSON("users", `u/${id}`))?.data 
 
 export async function register({ name, email, password }) {
   const nm = str(name, 80), mail = normEmail(email);
-  if (!nm) fail(400, "no_name", "Escribí tu nombre.");
+  if (!nm) fail(400, "no_name", "Escriba su nombre.");
   if (!isEmail(mail)) fail(400, "bad_email", "Correo inválido.");
   checkPassword(password);
   const id = randomToken(10);
-  if (!(await putJSON("users", emailKey(mail), { id }, { ifNew: true }))) fail(409, "exists", "Ya existe una cuenta con ese correo. Iniciá sesión.");
+  if (!(await putJSON("users", emailKey(mail), { id }, { ifNew: true }))) fail(409, "exists", "Ya existe una cuenta con ese correo. Inicie sesión.");
   const u = { id, name: nm, email: mail, hash: hashPassword(password), sessionVersion: 1, plan: null, planExpiresAt: null, planCodeId: null, blocked: false, createdAt: now(), lastLoginAt: now() };
   await putJSON("users", `u/${id}`, u);
   return { user: u, cookie: await cookieFor(u) };
@@ -45,7 +45,7 @@ export async function login({ email, password }) {
   // Siempre se calcula un hash: el tiempo de respuesta no revela si el correo existe.
   const good = u ? verifyPassword(String(password || ""), u.hash) : (verifyPassword("x", "scrypt$AAAAAAAAAAAAAAAAAAAAAA$AAAA"), false);
   if (!good) fail(401, "bad_login", "Correo o contraseña incorrectos.");
-  if (u.blocked) fail(403, "blocked", "Tu cuenta está bloqueada. Escribinos por WhatsApp para ayudarte.");
+  if (u.blocked) fail(403, "blocked", "Su cuenta está bloqueada. Escríbanos por WhatsApp y le ayudamos.");
   const next = await update("users", `u/${u.id}`, x => { x.lastLoginAt = now(); return x; });
   return { user: next, cookie: await cookieFor(next) };
 }
@@ -59,13 +59,13 @@ export async function currentUser(req) {
 }
 export async function requireUser(req) {
   const u = await currentUser(req);
-  if (!u) fail(401, "no_session", "Iniciá sesión.");
+  if (!u) fail(401, "no_session", "Inicie sesión.");
   return u;
 }
 
 export async function updateProfile(u, { name }) {
   const nm = str(name, 80);
-  if (!nm) fail(400, "no_name", "Escribí tu nombre.");
+  if (!nm) fail(400, "no_name", "Escriba su nombre.");
   return update("users", `u/${u.id}`, x => { x.name = nm; return x; });
 }
 export async function changePassword(u, current, next) {

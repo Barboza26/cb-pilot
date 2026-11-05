@@ -26,6 +26,41 @@
   // Pilo, la lapa copiloto: el emblema oficial (assets/img/pilo-emblema.svg). Las poses animadas llegan en la Fase 3.
   const PILO = `<img class="pilo __CLS__" src="/assets/img/pilo-emblema.svg" alt="" aria-hidden="true" draggable="false" width="128" height="128">`;
   const pilo = (cls = "") => PILO.replace("__CLS__", cls);
+
+  // ---------------- Pilo: poses que reaccionan a lo que pasa (Fase 3) ----------------
+  // saludar (inicio) · idea (mientras usted escribe) · pensar → procesar (mientras responde) · celebrar (respuesta lista)
+  // aprobar (en reposo durante el chat) · descansar (sin actividad) · volar (cuando llega).
+  const POSES = ["saludar", "idea", "pensar", "procesar", "celebrar", "aprobar", "descansar", "volar"];
+  const poseSrc = p => `/assets/pilo/${p}.webp`;
+  const POSE_ALT = { saludar: "Pilo saluda", idea: "Pilo tiene una idea", pensar: "Pilo está pensando", procesar: "Pilo está trabajando en su respuesta", celebrar: "Pilo celebra", aprobar: "Pilo le guiña el ojo", descansar: "Pilo está dormido", volar: "Pilo llega volando" };
+  let pose = "volar", poseTimer = 0, arrived = false, arriving = false, idleTimer = 0;
+  const poseImg = cls => `<img class="pilo pilo-pose ${cls}" data-pilo-pose src="${poseSrc(pose)}" alt="" draggable="false" width="512" height="512">`;
+  function restPose() {
+    if (running.has(current)) return pose === "pensar" ? "pensar" : "procesar";
+    if ($("#pl-input")?.value.trim()) return "idea";
+    return $("#pl-chat")?.classList.contains("is-empty") ? "saludar" : "aprobar";
+  }
+  /** Cambia la pose de Pilo (en el saludo y en el que va sentado sobre la caja de texto). Con ms, vuelve solo al reposo. */
+  function setPose(p, ms = 0) {
+    clearTimeout(poseTimer);
+    poseTimer = ms ? setTimeout(() => { poseTimer = 0; setPose(restPose()); }, ms) : 0;
+    if (p === pose) return;
+    pose = p;
+    document.querySelectorAll("[data-pilo-pose]").forEach(img => {
+      img.src = poseSrc(p);
+      img.classList.remove("is-pop", "is-arriving"); void img.offsetWidth; img.classList.add("is-pop");
+    });
+    const dock = $("#pl-dock"); if (dock) dock.title = T(POSE_ALT[p] || "Pilo", "Pilo");
+  }
+  // Si nadie toca nada por 2 minutos, Pilo se duerme; cualquier tecla o toque lo despierta saludando.
+  function wake() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => { if (!running.size && document.visibilityState === "visible") setPose("descansar"); }, 120000);
+    if (pose === "descansar") setPose("saludar", 1600);
+  }
+  ["pointerdown", "keydown", "wheel", "touchstart"].forEach(ev => addEventListener(ev, wake, { passive: true }));
+  // Las poses se precargan cuando el navegador está libre (no en modo Ahorro, para no gastar datos).
+  function preloadPoses() { if (document.documentElement.hasAttribute("data-ahorro")) return; POSES.forEach(p => { const i = new Image(); i.decoding = "async"; i.src = poseSrc(p); }); }
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
   // ---------------- Almacenamiento local ----------------
@@ -136,12 +171,12 @@
   async function post(url, body, signal, onEvent) {
     let res;
     try { res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal, credentials: "same-origin" }); }
-    catch (e) { if (e.name === "AbortError") throw e; throw fail("offline", T("Sin conexión. Revisá tu internet e intentá de nuevo.", "No connection. Check your internet and try again.")); }
+    catch (e) { if (e.name === "AbortError") throw e; throw fail("offline", T("Sin conexión. Revise su internet e intente de nuevo.", "No connection. Check your internet and try again.")); }
     const ct = res.headers.get("content-type") || "";
     if (ct.includes("application/json")) {
       const d = await res.json().catch(() => ({}));
       if (!onEvent) { if (!res.ok || d.ok === false) throw fail(d.error || "error", d.message || "Error"); return d; }
-      throw fail(d.error || "error", d.message || T("No pude responder. Intentá de nuevo.", "I couldn't answer. Please try again."));
+      throw fail(d.error || "error", d.message || T("No pude responder. Intente de nuevo.", "I couldn't answer. Please try again."));
     }
     if (!ct.includes("ndjson") || !res.body) throw fail("offline", T("CB Pilot necesita su servidor en línea.", "CB Pilot needs its online server."));
     const reader = res.body.getReader(), dec = new TextDecoder();
@@ -160,7 +195,7 @@
         onEvent(ev);
       }
     }
-    if (!done) throw fail("cut", T("La respuesta se interrumpió. Probá de nuevo.", "The response was interrupted. Please try again."));
+    if (!done) throw fail("cut", T("La respuesta se interrumpió. Pruebe de nuevo.", "The response was interrupted. Please try again."));
     return done;
   }
   /** Pide una respuesta completa: si el servidor corta por tiempo, pide la continuación sola. */
@@ -202,12 +237,12 @@
   function send(text) {
     text = text.trim();
     if (!text && !pend.length) return;
-    if (pend.some(f => f.loading)) return note(T("Esperá un segundo: todavía estoy leyendo tus archivos.", "One second: still reading your files."));
+    if (pend.some(f => f.loading)) return note(T("Un segundito: todavía estoy leyendo sus archivos.", "One second: still reading your files."));
     if (!text) text = T("Mirá el archivo adjunto.", "Take a look at the attached file.");
     let chat = chatById(current);
     if (!chat) chat = newChat();
     if (running.has(chat.id)) return;
-    if (activeCount() >= limit()) return note(T(`Tu plan permite ${limit()} respuestas a la vez. Esperá a que termine una o mejorá tu plan.`, `Your plan allows ${limit()} responses at once. Wait for one to finish or upgrade.`));
+    if (activeCount() >= limit()) return note(T(`Su plan permite ${limit()} respuestas a la vez. Espere a que termine una o mejore su plan.`, `Your plan allows ${limit()} responses at once. Wait for one to finish or upgrade.`));
     const msg = { role: "user", content: text };
     if (pend.length) { msg.files = pend.map(f => ({ kind: f.kind, name: f.name, thumb: f.thumb || "" })); fileData.set(msg, pend.map(({ kind, name, media, data, text }) => ({ kind, name, media, data, text }))); pend = []; renderAtts(); }
     chat.assistant = settings.assistant;
@@ -226,9 +261,9 @@
     const bot = { role: "assistant", content: "", pending: true, assistant: extra.assistant };
     chat.messages.push(bot);
     const ac = new AbortController(); running.set(chat.id, ac); busy();
-    renderList(); if (chat.id === current) renderThread(true); syncComposer();
+    renderList(); if (chat.id === current) { renderThread(true); setPose("pensar"); } syncComposer();
     try {
-      const r = await ask(history, "chat", ac.signal, text => { bot.content = text; paint(chat.id); }, items => { bot.sources = items; }, extra);
+      const r = await ask(history, "chat", ac.signal, text => { bot.content = text; paint(chat.id); if (chat.id === current && pose === "pensar") setPose("procesar"); }, items => { bot.sources = items; }, extra);
       bot.stop = r.stop;
     } catch (e) {
       if (e.name === "AbortError") bot.stop = "stopped";
@@ -236,7 +271,7 @@
     } finally {
       delete bot.pending; running.delete(chat.id); busy(); chat.updated = Date.now(); saveChats();
       renderList(); syncComposer();
-      if (chat.id === current) { renderThread(); if (!bot.error) autoPreview(bot.content); }
+      if (chat.id === current) { renderThread(); if (!bot.error) autoPreview(bot.content); setPose(bot.error ? "pensar" : bot.stop === "stopped" ? restPose() : "celebrar", bot.error ? 3000 : 2400); }
       if (!bot.error) $("#pl-live").textContent = T("Respuesta lista: ", "Response ready: ") + chat.title;
       pump();
     }
@@ -261,7 +296,7 @@
   function renderList() {
     const box = $("#pl-list"), q = query.toLowerCase();
     const list = chats.filter(c => c.messages.length && (!q || c.title.toLowerCase().includes(q) || c.messages.some(m => m.content.toLowerCase().includes(q))));
-    if (!list.length) { box.innerHTML = `<p class="pl-empty-list">${q ? T("Sin resultados.", "No results.") : T("Tus chats aparecen aquí. Se guardan solo en este dispositivo.", "Your chats appear here. They're stored only on this device.")}</p>`; return; }
+    if (!list.length) { box.innerHTML = `<p class="pl-empty-list">${q ? T("Sin resultados.", "No results.") : T("Sus chats aparecen aquí. Se guardan solo en este dispositivo.", "Your chats appear here. They're stored only on this device.")}</p>`; return; }
     const day = 864e5, start = new Date().setHours(0, 0, 0, 0);
     const groups = [[T("Fijados", "Pinned"), c => c.pinned], [T("Hoy", "Today"), c => c.updated >= start], [T("Últimos 7 días", "Last 7 days"), c => c.updated >= start - 6 * day], [T("Anteriores", "Older"), () => true]];
     const used = new Set(); let html = "";
@@ -276,6 +311,7 @@
   }
 
   // ---------------- Render: conversación ----------------
+  // Ideas con sabor tico para el botón «Sorpréndame»
   const CHIPS = [
     ["🎨", "La landing de mi soda", "A landing for my diner", "Con vista previa en vivo", "With a live preview", "Diseñá una landing moderna para una soda típica en Cartago llamada «La Esquina de Doña Flor», con casados, gallo pinto, horario y botón de WhatsApp.", "Design a modern landing page for a traditional Costa Rican diner in Cartago called “La Esquina de Doña Flor”, with casados, gallo pinto, opening hours and a WhatsApp button."],
     ["📣", "Posts para mi emprendimiento", "Posts for my business", "Textos y hashtags con sabor tico", "Copy and hashtags with local flavor", "Escribí 5 posts para Instagram de una panadería en Heredia, con tono tico, emojis y hashtags.", "Write 5 Instagram posts for a bakery in Heredia, Costa Rica, with a friendly tone, emojis and hashtags."],
@@ -288,12 +324,12 @@
 
   function hello() {
     const warn = offline || (info && !info.available ? info.reason : "");
-    return `<div class="pl-hello"><div class="pl-pilo">${pilo("pilo-hero")}</div>
+    return `<div class="pl-hello"><div class="pl-pilo">${poseImg("pilo-hero" + (arrived || arriving ? "" : (arriving = true, " is-arriving")))}</div>
+      <span class="pl-badge">🇨🇷 ${T("Hecho en Costa Rica", "Made in Costa Rica")}</span>
       <h2>${user ? T(`¡Pura vida, <span class='grad'>${esc(firstName())}</span>!`, `Pura vida, <span class='grad'>${esc(firstName())}</span>!`) : T("¡Pura <span class='grad'>vida</span>!", "Pura <span class='grad'>vida</span>!")}</h2>
       <p class="pl-sub">${T("Soy Pilo, su copiloto de IA", "I'm Pilo, your AI copilot")}</p>
-      <p class="pl-lead">${T("Estoy aquí para ayudarle a conversar, aprender, crear, programar y sacar adelante sus proyectos. Hecho en Costa Rica 🇨🇷.", "I'm here to help you chat, learn, create, code and move your projects forward. Made in Costa Rica 🇨🇷.")}</p>
-      ${warn ? `<p class="form-msg" role="status">${esc(warn)}</p>` : ""}
-      <div class="pl-examples">${CHIPS.slice(0, 4).map((c, i) => `<button type="button" class="pl-ex" data-chip="${i}">${c[0]} ${T(c[1], c[2])}</button>`).join("")}</div></div>`;
+      <p class="pl-lead">${T("Le ayudo a conversar, aprender, crear, programar y sacar adelante sus proyectos.", "I help you chat, learn, create, code and move your projects forward.")}</p>
+      ${warn ? `<p class="form-msg" role="status">${esc(warn)}</p>` : ""}</div>`;
   }
   // Fuentes de la base de conocimiento que se consultaron para responder.
   const sourcesHTML = list => `<div class="pl-srcs"><span>${T("Fuentes consultadas", "Sources")}</span>${list.map(x => {
@@ -326,11 +362,11 @@
     const chat = chatById(current), box = $("#pl-thread");
     $("#pl-title").textContent = chat && chat.messages.length ? chat.title : "CB Pilot";
     $("#pl-chat").classList.toggle("is-empty", !chat || !chat.messages.length);
-    if (!chat || !chat.messages.length) { box.innerHTML = hello(); syncComposer(); return; }
+    if (!chat || !chat.messages.length) { box.innerHTML = hello(); syncComposer(); if (arrived) setPose(restPose()); return; }
     const n = chat.messages.length, lastUser = chat.messages.map(m => m.role).lastIndexOf("user");
     box.innerHTML = chat.messages.map((m, i) => msgHTML(m, i, chat, { isLast: i === n - 1, lastUser: i === lastUser })).join("");
     if (toBottom) { const sc = $("#pl-scroll"); sc.style.scrollBehavior = "auto"; sc.scrollTop = sc.scrollHeight; sc.style.scrollBehavior = ""; }
-    syncComposer();
+    syncComposer(); if (arrived && !poseTimer) setPose(restPose());
   }
   function syncComposer() {
     const busy = running.has(current), btn = $("#pl-send");
@@ -349,20 +385,20 @@
   // ---------------- Modo Tareas ----------------
   // Rutas: paquetes de tareas con nombres de lugares de Costa Rica.
   const PACKS = [
-    [T("🌋 Ruta Arenal · Lanzá tu negocio", "🌋 Arenal route · Launch your business"), [T("Proponé 10 nombres y 5 eslóganes para [mi negocio]", "Suggest 10 names and 5 slogans for [my business]"), T("Escribí la propuesta de valor de [mi negocio] en 3 versiones", "Write [my business]'s value proposition in 3 versions"), T("Armá un plan de lanzamiento de 30 días para [mi negocio] en Costa Rica", "Make a 30-day launch plan for [my business] in Costa Rica")]],
-    [T("🌿 Ruta Monteverde · Tus redes", "🌿 Monteverde route · Your socials"), [T("Escribí 10 ideas de posts para Instagram para [mi negocio], con texto y hashtags", "Write 10 Instagram post ideas for [my business], with copy and hashtags"), T("Redactá 5 textos cortos para estados de WhatsApp de [mi negocio]", "Write 5 short WhatsApp status texts for [my business]"), T("Proponé un calendario de contenido de 2 semanas para [mi negocio]", "Propose a 2-week content calendar for [my business]")]],
-    [T("🏖️ Ruta Manuel Antonio · Tu web", "🏖️ Manuel Antonio route · Your website"), [T("Redactá la portada de la web de [mi negocio]: título, subtítulo y 3 beneficios", "Write the homepage of [my business]: headline, subheadline and 3 benefits"), T("Escribí la sección «Sobre nosotros» de [mi negocio]", "Write the “About us” section for [my business]"), T("Creá 8 preguntas frecuentes con respuesta para [mi negocio]", "Create 8 FAQs with answers for [my business]")]],
+    [T("🌋 Ruta Arenal · Lance su negocio", "🌋 Arenal route · Launch your business"), [T("Proponé 10 nombres y 5 eslóganes para [mi negocio]", "Suggest 10 names and 5 slogans for [my business]"), T("Escribí la propuesta de valor de [mi negocio] en 3 versiones", "Write [my business]'s value proposition in 3 versions"), T("Armá un plan de lanzamiento de 30 días para [mi negocio] en Costa Rica", "Make a 30-day launch plan for [my business] in Costa Rica")]],
+    [T("🌿 Ruta Monteverde · Sus redes", "🌿 Monteverde route · Your socials"), [T("Escribí 10 ideas de posts para Instagram para [mi negocio], con texto y hashtags", "Write 10 Instagram post ideas for [my business], with copy and hashtags"), T("Redactá 5 textos cortos para estados de WhatsApp de [mi negocio]", "Write 5 short WhatsApp status texts for [my business]"), T("Proponé un calendario de contenido de 2 semanas para [mi negocio]", "Propose a 2-week content calendar for [my business]")]],
+    [T("🏖️ Ruta Manuel Antonio · Su web", "🏖️ Manuel Antonio route · Your website"), [T("Redactá la portada de la web de [mi negocio]: título, subtítulo y 3 beneficios", "Write the homepage of [my business]: headline, subheadline and 3 benefits"), T("Escribí la sección «Sobre nosotros» de [mi negocio]", "Write the “About us” section for [my business]"), T("Creá 8 preguntas frecuentes con respuesta para [mi negocio]", "Create 8 FAQs with answers for [my business]")]],
     [T("💰 Ruta Limón · Ventas", "💰 Limón route · Sales"), [T("Escribí un mensaje de WhatsApp para responder a un cliente que pregunta precios de [mi negocio]", "Write a WhatsApp reply for a customer asking about prices at [my business]"), T("Creá una promoción para [mi negocio] con 3 variantes de texto y precios en colones", "Create a promotion for [my business] with 3 copy variants and prices in colones"), T("Escribí un mensaje de agradecimiento para clientes que pagaron por SINPE en [mi negocio]", "Write a thank-you message for customers who paid via SINPE at [my business]")]],
     [T("📚 Ruta Cartago · Estudio", "📚 Cartago route · Study"), [T("Resumí en 10 puntos clave el tema: [tema]", "Summarize in 10 key points: [topic]"), T("Creá un plan de estudio de 7 días sobre [tema]", "Create a 7-day study plan about [topic]"), T("Hacé 10 preguntas de práctica con respuestas sobre [tema]", "Write 10 practice questions with answers about [topic]")]]
   ];
 
   function renderPacks() { $("#pl-packs").innerHTML = PACKS.map((p, i) => `<button type="button" data-pack="${i}">${esc(p[0])}</button>`).join(""); hint(); }
-  function hint() { $("#pl-task-hint").textContent = T(`Hasta ${limit()} tareas a la vez en tu plan · máximo 10 por envío`, `Up to ${limit()} tasks at once on your plan · max 10 per batch`); }
+  function hint() { $("#pl-task-hint").textContent = T(`Hasta ${limit()} tareas a la vez en su plan · máximo 10 por envío`, `Up to ${limit()} tasks at once on your plan · max 10 per batch`); }
   function launch(text) {
     const lines = text.split("\n").map(s => s.replace(/^\s*([-*•]|\d+[.)])\s*/, "").trim()).filter(Boolean);
     if (!lines.length) return;
     if (lines.length > 10) return taskMsg(T("Máximo 10 tareas por envío.", "Max 10 tasks per batch."));
-    if (lines.some(l => /\[(mi negocio|tema|my business|topic)\]/i.test(l))) return taskMsg(T("Reemplazá [mi negocio] o [tema] por tu caso real antes de lanzar.", "Replace [my business] or [topic] with your real case before launching."));
+    if (lines.some(l => /\[(mi negocio|tema|my business|topic)\]/i.test(l))) return taskMsg(T("Reemplace [mi negocio] o [tema] por su caso real antes de lanzar.", "Replace [my business] or [topic] with your real case before launching."));
     const t0 = Date.now();
     tasks.unshift(...lines.map((prompt, i) => ({ id: uid(), prompt, status: "queued", content: "", created: t0, seq: t0 * 100 + i })));
     $("#pl-task-input").value = ""; saveTasks(); paintTasks(); pump();
@@ -382,7 +418,7 @@
   const STATE = { queued: ["En pista", "On runway"], running: ["En vuelo", "In flight"], done: ["Aterrizó ✓", "Landed ✓"], error: ["Error", "Error"] };
   function paintTasks() {
     const board = $("#pl-board");
-    if (!tasks.length) { board.innerHTML = `<p class="pl-board-empty">${T("Todavía no hay misiones en la torre. Escribí varias arriba (una por línea) o elegí una ruta.", "No missions in the tower yet. Write several above (one per line) or pick a route.")}</p>`; return; }
+    if (!tasks.length) { board.innerHTML = `<p class="pl-board-empty">${T("Todavía no hay misiones en la torre. Escriba varias arriba (una por línea) o elija una ruta.", "No missions in the tower yet. Write several above (one per line) or pick a route.")}</p>`; return; }
     const open = new Set($$(".pl-tcard.is-open", board).map(c => c.dataset.id));
     board.innerHTML = tasks.map(t => {
       const b = (act, ic, label) => `<button type="button" data-act="${act}">${icon(ic)}<span>${label}</span></button>`;
@@ -442,23 +478,23 @@
     const p = info?.plans || {}, cur = info?.plan || "gratis";
     const times = k => String(Math.round(((p[k]?.perDay || 1) / (p.gratis?.perDay || 1)) * 10) / 10).replace(".", A.lang === "en" ? "." : ",");
     const FEAT = {
-      gratis: [T("Pilot Flash: rápido y eficiente", "Pilot Flash: fast and efficient"), T("Uso diario incluido, se renueva cada día", "Daily usage included, renews every day"), T("2 respuestas o tareas a la vez", "2 responses or tasks at once"), T("Vista previa de diseños HTML", "HTML design preview"), T("Historial privado en tu dispositivo", "Private history on your device")],
+      gratis: [T("Pilot Flash: rápido y eficiente", "Pilot Flash: fast and efficient"), T("Uso diario incluido, se renueva cada día", "Daily usage included, renews every day"), T("2 respuestas o tareas a la vez", "2 responses or tasks at once"), T("Vista previa de diseños HTML", "HTML design preview"), T("Historial privado en su dispositivo", "Private history on your device")],
       pro: [T("Pilot Pro: respuestas más inteligentes", "Pilot Pro: smarter answers"), T(`${times("pro")}× más uso diario que Gratis`, `${times("pro")}× more daily usage than Free`), T("4 respuestas o tareas a la vez", "4 responses or tasks at once"), T("Respuestas más largas y más memoria", "Longer answers and more memory"), T("Ideal para trabajo y estudio diario", "Ideal for daily work and study")],
       max: [T("Pilot Max: el modelo más potente", "Pilot Max: the most powerful model"), T(`${times("max")}× más uso diario que Gratis`, `${times("max")}× more daily usage than Free`), T("6 respuestas o tareas a la vez", "6 responses or tasks at once"), T("Razonamiento profundo para tareas complejas", "Deep reasoning for complex tasks"), T("Memoria más amplia de la conversación", "Largest conversation memory")]
     };
     const card = k => {
       const price = k === "gratis" ? `${crc(0)} <small>${T("para siempre", "forever")}</small>` : p[k]?.price ? `${crc(p[k].price)} <small>${T("/ mes", "/ month")}</small>` : `<small>${T("Precio por WhatsApp", "Price on WhatsApp")}</small>`;
       const wa = `https://wa.me/${info?.whatsapp || ""}?text=${encodeURIComponent(T(`Hola, quiero el plan ${p[k]?.name || k} de CB Pilot.`, `Hi, I want the CB Pilot ${p[k]?.name || k} plan.`))}`;
-      const cta = k === cur ? `<button class="btn btn-ghost" type="button" disabled>${T("Tu plan actual", "Your current plan")}</button>` : k === "gratis" ? "" : `<a class="btn btn-primary" href="${wa}" target="_blank" rel="noopener noreferrer">${T("Quiero", "I want")} ${esc(p[k]?.name || k)}</a>`;
+      const cta = k === cur ? `<button class="btn btn-ghost" type="button" disabled>${T("Su plan actual", "Your current plan")}</button>` : k === "gratis" ? "" : `<a class="btn btn-primary" href="${wa}" target="_blank" rel="noopener noreferrer">${T("Quiero", "I want")} ${esc(p[k]?.name || k)}</a>`;
       return `<div class="pl-pcard${k === "pro" ? " is-best" : ""}${k === cur ? " is-current" : ""}">${k === "pro" ? `<span class="pl-ribbon">${T("Recomendado", "Recommended")}</span>` : ""}<h3>${esc(planName(k))}</h3><div class="pl-price">${price}</div><ul>${FEAT[k].map(f => `<li>${esc(f)}</li>`).join("")}</ul>${cta}</div>`;
     };
-    $("#pl-plans-body").innerHTML = `<div class="pl-dialog-head"><div><span class="eyebrow">CB Pilot</span><h2 id="pl-plans-title">${T("Elegí tu <span class='grad'>plan</span>", "Choose your <span class='grad'>plan</span>")}</h2></div><button type="button" class="pl-icon" data-close aria-label="${T("Cerrar", "Close")}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    $("#pl-plans-body").innerHTML = `<div class="pl-dialog-head"><div><span class="eyebrow">CB Pilot</span><h2 id="pl-plans-title">${T("Elija su <span class='grad'>plan</span>", "Choose your <span class='grad'>plan</span>")}</h2></div><button type="button" class="pl-icon" data-close aria-label="${T("Cerrar", "Close")}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
       <div class="pl-plans">${["gratis", "pro", "max"].map(card).join("")}</div>
-      <p class="muted">${T("Pagás por SINPE Móvil y te enviamos un código de acceso para activar tu plan en cualquier dispositivo.", "Pay via SINPE Móvil and we'll send you an access code to activate your plan on any device.")}</p>
-      <p class="muted">${user ? T("Al activar un código con tu sesión iniciada, el plan queda en tu cuenta y lo usás en todos tus dispositivos.", "When you activate a code while signed in, the plan is saved to your account and works on all your devices.") : T("Consejo: <button type='button' class='pl-link' data-act='auth'>creá una cuenta gratis</button> para usar tu plan en todos tus dispositivos.", "Tip: <button type='button' class='pl-link' data-act='auth'>create a free account</button> to use your plan on all your devices.")}</p>
-      ${user && info?.plan !== "gratis" && info?.expiresAt ? `<p class="form-msg ok">${T("Plan", "Plan")} ${esc(planName(info.plan))} ${T("activo en tu cuenta hasta", "active on your account until")} ${new Date(info.expiresAt).toLocaleDateString(A.lang === "en" ? "en-US" : "es-CR")}.</p>` : ""}
+      <p class="muted">${T("Paga por SINPE Móvil y le enviamos un código de acceso para activar su plan en cualquier dispositivo.", "Pay via SINPE Móvil and we'll send you an access code to activate your plan on any device.")}</p>
+      <p class="muted">${user ? T("Al activar un código con su sesión iniciada, el plan queda en su cuenta y lo usa en todos sus dispositivos.", "When you activate a code while signed in, the plan is saved to your account and works on all your devices.") : T("Consejo: <button type='button' class='pl-link' data-act='auth'>cree una cuenta gratis</button> para usar su plan en todos sus dispositivos.", "Tip: <button type='button' class='pl-link' data-act='auth'>create a free account</button> to use your plan on all your devices.")}</p>
+      ${user && info?.plan !== "gratis" && info?.expiresAt ? `<p class="form-msg ok">${T("Plan", "Plan")} ${esc(planName(info.plan))} ${T("activo en su cuenta hasta", "active on your account until")} ${new Date(info.expiresAt).toLocaleDateString(A.lang === "en" ? "en-US" : "es-CR")}.</p>` : ""}
       ${info?.passValid ? `<p class="form-msg ok">${T("Plan", "Plan")} ${esc(planName(info.plan))} ${T("activo hasta", "active until")} ${new Date(info.expiresAt).toLocaleDateString(A.lang === "en" ? "en-US" : "es-CR")}. <button type="button" class="pl-link" data-act="logout">${T("Quitar el código de este dispositivo", "Remove the code from this device")}</button></p>` : ""}
-      <form class="pl-activate" id="pl-activate"><div class="field"><label for="pl-code">${T("¿Ya tenés un código?", "Already have a code?")}</label><input id="pl-code" placeholder="CBP-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false" required></div><button class="btn btn-primary" type="submit">${T("Activar", "Activate")}</button></form><div id="pl-act-msg"></div>`;
+      <form class="pl-activate" id="pl-activate"><div class="field"><label for="pl-code">${T("¿Ya tiene un código?", "Already have a code?")}</label><input id="pl-code" placeholder="CBP-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false" required></div><button class="btn btn-primary" type="submit">${T("Activar", "Activate")}</button></form><div id="pl-act-msg"></div>`;
     const dlg = $("#pl-plans"); if (!dlg.open) dlg.showModal();
   }
 
@@ -583,14 +619,14 @@
       const input = $("#pl-input"), base = input.value ? input.value.replace(/\s*$/, " ") : "";
       rec = new Rec(); rec.lang = A.lang === "en" ? "en-US" : "es-CR"; rec.interimResults = true; rec.continuous = true;
       rec.onresult = ev => { input.value = base + [...ev.results].map(r => r[0].transcript).join(""); grow(); };
-      rec.onerror = ev => { if (ev.error === "not-allowed" || ev.error === "service-not-allowed" || ev.error === "network") note(T("El dictado por voz no está disponible en este navegador (en Brave suele estar bloqueado). Probá en Chrome o Edge.", "Voice dictation isn't available in this browser (Brave usually blocks it). Try Chrome or Edge.")); };
+      rec.onerror = ev => { if (ev.error === "not-allowed" || ev.error === "service-not-allowed" || ev.error === "network") note(T("El dictado por voz no está disponible en este navegador (en Brave suele estar bloqueado). Pruebe en Chrome o Edge.", "Voice dictation isn't available in this browser (Brave usually blocks it). Try Chrome or Edge.")); };
       rec.onend = () => { rec = null; mic.classList.remove("is-rec"); mic.setAttribute("aria-pressed", "false"); };
       try { rec.start(); mic.classList.add("is-rec"); mic.setAttribute("aria-pressed", "true"); } catch { rec = null; }
     });
   }
 
   // ---------------- Acciones rápidas (con la conversación vacía) ----------------
-  const QUICK = [["attach", "📎", "Analizar archivo", "Analyze a file"], ["doc", "📄", "Crear documento", "Write a document"], ["code", "💻", "Ayuda con código", "Help with code"], ["web", "🎨", "Diseñar una página", "Design a page"], ["biz", "💡", "Ideas de negocio", "Business ideas"]];
+  const QUICK = [["attach", "📎", "Analizar archivo", "Analyze a file"], ["doc", "📄", "Crear documento", "Write a document"], ["code", "💻", "Ayuda con código", "Help with code"], ["web", "🎨", "Diseñar una página", "Design a page"], ["biz", "💡", "Ideas de negocio", "Business ideas"], ["luck", "🎲", "Sorpréndame", "Surprise me"]];
   function renderQuick() { $("#pl-quick").innerHTML = QUICK.map(([k, ic, es, en]) => `<button type="button" class="pl-qa" data-q="${k}"><span aria-hidden="true">${ic}</span>${esc(T(es, en))}</button>`).join(""); }
   function setAssistant(v) { settings.assistant = v; const c = chatById(current); if (c && !running.has(c.id)) { c.assistant = v; saveChats(); } syncPickers(); }
   function prefill(text) { const t = $("#pl-input"); t.value = text; grow(); t.focus(); t.setSelectionRange(text.length, text.length); }
@@ -601,6 +637,7 @@
     if (k === "doc") { setAssistant("writer"); prefill(T("Redácteme un documento sobre ", "Write me a document about ")); }
     if (k === "code") { setAssistant("code"); prefill(""); }
     if (k === "web") { setAssistant("web"); prefill(T("Diseñe una landing page para ", "Design a landing page for ")); }
+    if (k === "luck") { const c = CHIPS[Math.floor(Math.random() * CHIPS.length)]; setAssistant("general"); prefill(T(c[5], c[6])); }
     if (k === "biz") { setAssistant("marketing"); prefill(T("Deme ideas para hacer crecer mi negocio de ", "Give me ideas to grow my business of ")); }
   });
 
@@ -729,8 +766,8 @@
     authForced = forced;
     const reg = mode === "register", dlg = $("#pl-auth");
     $("#pl-auth-body").innerHTML = `<div class="pl-auth-head"><img class="pl-auth-orb" src="/assets/img/pilo-emblema.svg" alt="" width="64" height="64">
-        <h2 id="pl-auth-title">${reg ? T("Creá tu cuenta", "Create your account") : T("Bienvenido de vuelta", "Welcome back")}</h2>
-        <p class="muted">${forced ? T("Para usar CB Pilot necesitás una cuenta. Es gratis.", "You need an account to use CB Pilot. It's free.") : reg ? T("Gratis. Tu plan y tu uso te siguen en todos tus dispositivos.", "Free. Your plan and usage follow you on every device.") : T("Entrá para usar tu plan en este dispositivo.", "Sign in to use your plan on this device.")}</p>
+        <h2 id="pl-auth-title">${reg ? T("Cree su cuenta", "Create your account") : T("Bienvenido de vuelta", "Welcome back")}</h2>
+        <p class="muted">${forced ? T("Para usar CB Pilot necesita una cuenta. Es gratis.", "You need an account to use CB Pilot. It's free.") : reg ? T("Gratis. Su plan y su uso lo acompañan en todos sus dispositivos.", "Free. Your plan and usage follow you on every device.") : T("Entre para usar su plan en este dispositivo.", "Sign in to use your plan on this device.")}</p>
         ${forced ? "" : `<button type="button" class="pl-icon pl-auth-x" data-close aria-label="${T("Cerrar", "Close")}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`}</div>
       <div class="pl-tabs" role="tablist"><button type="button" role="tab" aria-selected="${!reg}" data-tab="login">${T("Iniciar sesión", "Sign in")}</button><button type="button" role="tab" aria-selected="${reg}" data-tab="register">${T("Crear cuenta", "Create account")}</button></div>
       <form id="pl-auth-form" class="pl-auth-form" novalidate>
@@ -740,7 +777,7 @@
           <div class="pl-pw"><input id="au-pw" type="password" autocomplete="${reg ? "new-password" : "current-password"}" required minlength="${reg ? 8 : 1}"><button type="button" class="pl-pw-eye" data-eye aria-label="${T("Mostrar contraseña", "Show password")}">👁</button></div></div>
         <div id="au-msg"></div>
         <button class="btn btn-primary" type="submit">${reg ? T("Crear cuenta", "Create account") : T("Entrar", "Sign in")}</button>
-        ${reg ? `<p class="muted pl-auth-legal">${T("Al crear tu cuenta aceptás los <a href='/terminos/' target='_blank'>términos</a> y la <a href='/privacidad/' target='_blank'>privacidad</a>.", "By creating an account you accept the <a href='/terminos/' target='_blank'>terms</a> and <a href='/privacidad/' target='_blank'>privacy policy</a>.")}</p>` : `<p class="muted pl-auth-legal">${T("¿Olvidaste tu contraseña? Escribinos por", "Forgot your password? Message us on")} <a href="https://wa.me/${esc(info?.whatsapp || "")}" target="_blank" rel="noopener noreferrer">WhatsApp</a>.</p>`}
+        ${reg ? `<p class="muted pl-auth-legal">${T("Al crear su cuenta acepta los <a href='/terminos/' target='_blank'>términos</a> y la <a href='/privacidad/' target='_blank'>privacidad</a>.", "By creating an account you accept the <a href='/terminos/' target='_blank'>terms</a> and <a href='/privacidad/' target='_blank'>privacy policy</a>.")}</p>` : `<p class="muted pl-auth-legal">${T("¿Olvidó su contraseña? Escríbanos por", "Forgot your password? Message us on")} <a href="https://wa.me/${esc(info?.whatsapp || "")}" target="_blank" rel="noopener noreferrer">WhatsApp</a>.</p>`}
       </form>`;
     dlg.dataset.mode = mode;
     if (!dlg.open) dlg.showModal();
@@ -763,7 +800,7 @@
       const r = await post(reg ? "/api/account/register" : "/api/account/login", body);
       user = r.user; authForced = false; $("#pl-auth").close();
       await refreshStatus(); renderThread();
-      note(reg ? T(`¡Bienvenido, ${firstName()}! Tu cuenta está lista.`, `Welcome, ${firstName()}! Your account is ready.`) : T(`¡Hola de nuevo, ${firstName()}!`, `Welcome back, ${firstName()}!`), true);
+      note(reg ? T(`¡Bienvenido, ${firstName()}! Su cuenta está lista.`, `Welcome, ${firstName()}! Your account is ready.`) : T(`¡Hola de nuevo, ${firstName()}!`, `Welcome back, ${firstName()}!`), true);
     } catch (err) { box.innerHTML = `<p class="form-msg" role="alert">${esc(err.message)}</p>`; btn.disabled = false; }
   });
 
@@ -780,10 +817,10 @@
         <p class="muted">${T(`Miembro desde ${new Date(user.createdAt).toLocaleDateString("es-CR", { month: "long", year: "numeric" })}.`, `Member since ${new Date(user.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}.`)}</p></section>
       <form class="pl-acc-card" id="acc-profile"><h3>${T("Perfil", "Profile")}</h3><div class="field"><label for="acc-name">${T("Nombre", "Name")}</label><input id="acc-name" value="${esc(user.name)}" maxlength="80" required></div><div class="acc-msg"></div><button class="btn btn-primary btn-sm" type="submit">${T("Guardar", "Save")}</button></form>
       <form class="pl-acc-card" id="acc-password"><h3>${T("Contraseña", "Password")}</h3><div class="fields"><div class="field"><label for="acc-cur">${T("Actual", "Current")}</label><input id="acc-cur" type="password" autocomplete="current-password" required></div><div class="field"><label for="acc-new">${T("Nueva (mínimo 8)", "New (min. 8)")}</label><input id="acc-new" type="password" autocomplete="new-password" minlength="8" required></div></div>
-        <p class="muted">${T("Al cambiarla se cierra la sesión en tus otros dispositivos.", "Changing it signs you out on your other devices.")}</p><div class="acc-msg"></div><button class="btn btn-primary btn-sm" type="submit">${T("Cambiar contraseña", "Change password")}</button></form>
-      <section class="pl-acc-card"><h3>${T("Privacidad", "Privacy")}</h3><p class="muted">${T("Tus chats se guardan solo en este dispositivo. Tu cuenta guarda tu nombre, correo, plan y uso.", "Your chats are stored only on this device. Your account stores your name, email, plan and usage.")}</p>
+        <p class="muted">${T("Al cambiarla se cierra la sesión en sus otros dispositivos.", "Changing it signs you out on your other devices.")}</p><div class="acc-msg"></div><button class="btn btn-primary btn-sm" type="submit">${T("Cambiar contraseña", "Change password")}</button></form>
+      <section class="pl-acc-card"><h3>${T("Privacidad", "Privacy")}</h3><p class="muted">${T("Sus chats se guardan solo en este dispositivo. Su cuenta guarda su nombre, correo, plan y uso.", "Your chats are stored only on this device. Your account stores your name, email, plan and usage.")}</p>
         <div class="pl-acc-row"><button type="button" class="btn btn-ghost btn-sm" data-act="logout">${T("Cerrar sesión", "Sign out")}</button><button type="button" class="btn btn-ghost btn-sm pl-danger" data-act="delete">${T("Eliminar mi cuenta", "Delete my account")}</button></div>
-        <form id="acc-delete" hidden><div class="field"><label for="acc-del">${T("Para confirmar, escribí tu contraseña", "To confirm, enter your password")}</label><input id="acc-del" type="password" autocomplete="current-password" required></div><div class="acc-msg"></div><button class="btn btn-primary btn-sm pl-danger-btn" type="submit">${T("Eliminar definitivamente", "Delete permanently")}</button></form></section>`;
+        <form id="acc-delete" hidden><div class="field"><label for="acc-del">${T("Para confirmar, escriba su contraseña", "To confirm, enter your password")}</label><input id="acc-del" type="password" autocomplete="current-password" required></div><div class="acc-msg"></div><button class="btn btn-primary btn-sm pl-danger-btn" type="submit">${T("Eliminar definitivamente", "Delete permanently")}</button></form></section>`;
     const dlg = $("#pl-account"); if (!dlg.open) dlg.showModal();
   }
   const accMsg = (form, text, ok) => { form.querySelector(".acc-msg").innerHTML = `<p class="form-msg${ok ? " ok" : ""}" role="status">${esc(text)}</p>`; };
@@ -800,7 +837,7 @@
     try {
       if (f.id === "acc-profile") { const r = await post("/api/account/profile", { name: $("#acc-name").value }); user = r.user; renderAcct(); renderThread(); openAccount(); accMsg($("#acc-profile"), T("Guardado.", "Saved."), true); return; }
       if (f.id === "acc-password") { await post("/api/account/password", { current: $("#acc-cur").value, next: $("#acc-new").value }); f.reset(); accMsg(f, T("Contraseña cambiada.", "Password changed."), true); }
-      if (f.id === "acc-delete") { await post("/api/account/delete", { password: $("#acc-del").value }); $("#pl-account").close(); user = null; await refreshStatus(); renderThread(); note(T("Tu cuenta fue eliminada.", "Your account was deleted."), true); return; }
+      if (f.id === "acc-delete") { await post("/api/account/delete", { password: $("#acc-del").value }); $("#pl-account").close(); user = null; await refreshStatus(); renderThread(); note(T("Su cuenta fue eliminada.", "Your account was deleted."), true); return; }
     } catch (err) { accMsg(f, err.message); }
     btn.disabled = false;
   });
@@ -808,7 +845,7 @@
   // ---------------- Eventos ----------------
   $("#pl-form").addEventListener("submit", e => { e.preventDefault(); if (running.has(current)) running.get(current).abort(); else send($("#pl-input").value); });
   $("#pl-input").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && matchMedia("(pointer:fine)").matches) { e.preventDefault(); $("#pl-form").requestSubmit(); } });
-  $("#pl-input").addEventListener("input", grow);
+  $("#pl-input").addEventListener("input", () => { grow(); if (!running.has(current) && pose !== "celebrar") setPose(restPose()); });
   $("#pl-new").addEventListener("click", () => { const c = chatById(current); if (!c || c.messages.length) newChat(); settings.assistant = "general"; syncPickers(); setView("chat"); closeSide(); $("#pl-input").focus(); });
   $("#pl-search").addEventListener("input", e => { query = e.target.value.trim(); renderList(); });
   $$(".pl-nav [data-view]").forEach(b => b.addEventListener("click", () => { setView(b.dataset.view); closeSide(); }));
@@ -840,8 +877,6 @@
   });
 
   $("#pl-thread").addEventListener("click", e => {
-    const chip = e.target.closest("[data-chip]");
-    if (chip) { const c = CHIPS[+chip.dataset.chip]; return send(T(c[5], c[6])); }
     const b = e.target.closest("[data-act]"); if (!b) return;
     const chat = chatById(current), msgEl = b.closest("[data-i]"), m = chat && msgEl ? chat.messages[+msgEl.dataset.i] : null;
     switch (b.dataset.act) {
@@ -853,7 +888,7 @@
       case "rate": m.rating = m.rating === b.dataset.v ? null : b.dataset.v; saveChats(); return renderThread();
       case "regen":
         if (running.has(chat.id)) return;
-        if (activeCount() >= limit()) return note(T(`Tu plan permite ${limit()} respuestas a la vez.`, `Your plan allows ${limit()} responses at once.`));
+        if (activeCount() >= limit()) return note(T(`Su plan permite ${limit()} respuestas a la vez.`, `Your plan allows ${limit()} responses at once.`));
         if (chat.messages[chat.messages.length - 1].role === "assistant") chat.messages.pop();
         return runChat(chat);
       case "continue": return send(T("Continuá", "Continue"));
@@ -878,7 +913,7 @@
       const r = await post("/api/pilot/activate", { code: $("#pl-code").value });
       if (r.pass) { pass = r.pass; write(K.pass, pass); } // sin cuenta: el plan queda en este dispositivo
       await refreshStatus(); openPlans();
-      $("#pl-act-msg").innerHTML = `<p class="form-msg ok" role="status">${T("¡Listo! Tu plan", "Done! Your")} ${esc(info?.planName || r.plan)} ${T("ya está activo.", "plan is active.")}</p>`;
+      $("#pl-act-msg").innerHTML = `<p class="form-msg ok" role="status">${T("¡Listo! Su plan", "Done! Your")} ${esc(info?.planName || r.plan)} ${T("ya está activo.", "plan is active.")}</p>`;
     } catch (err) { box.innerHTML = `<p class="form-msg" role="alert">${esc(err.message)}</p>`; btn.disabled = false; }
   });
 
@@ -914,5 +949,8 @@
   syncPickers(); renderQuick(); renderPacks(); renderList(); renderPlan();
   setView(location.hash === "#tareas" ? "tasks" : "chat");
   renderThread(true);
+  // Llegada: Pilo entra volando y aterriza saludando (sin animación si el sistema pide reducir movimiento).
+  setTimeout(() => { arrived = true; setPose(restPose()); wake(); }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 1300);
+  (window.requestIdleCallback || (f => setTimeout(f, 1500)))(preloadPoses);
   refreshStatus().then(() => { pump(); if (!read("cbpilot-welcomed", 0) && !$("#pl-auth").open) openPanel("welcome"); });
 })();

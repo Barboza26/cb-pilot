@@ -8,7 +8,7 @@ Referencia visual: el **emblema oficial de Pilo** (lapa roja con goggles y audí
 |---|---|---|
 | 1 · Auditoría | Revisión de archivos, funciones, dependencias y riesgos | ✅ 30/10/2026 |
 | 2 · Rediseño visual base | Marca CB Pilot + sello CeBe Studio; menú lateral (Conversaciones, Torre de control, Explorar mundos, Cabina de mando, Configuración); inicio en tarjeta de vidrio con la caja de texto al centro y acciones rápidas reales; nombre de Pilo y del asistente en cada respuesta; Cabina de mando (uso real, Crucero/Turbo, Modo Ahorro); Configuración; bienvenida para elegir la forma de hablar; tema CB Pilot Original con los colores de CeBe Studio | ✅ 30/10/2026 |
-| 3 · Integración de Pilo | Sistema de estados reutilizable (saludar, pensar, procesar, celebrar, volar, descansar, reaccionar al escribir) con las ilustraciones 3D oficiales | Pendiente — **necesita las ilustraciones de Pilo en PNG/WebP con fondo transparente** |
+| 3 · Integración de Pilo | Sistema de estados reutilizable (saludar, pensar, procesar, celebrar, volar, descansar, reaccionar al escribir) con las ilustraciones 3D oficiales | Hecha (05/11/2026): 8 poses en `public/assets/pilo/`, saludo con llegada volando, Pilo sentado sobre la caja de texto, se duerme a los 2 min sin actividad. Pendiente: sonidos opcionales |
 | 4 · Mundo Selva | Paisaje por capas con parallax, hojas, rayos de sol, partículas, mariposas, luciérnagas de noche, sonidos opcionales; Pilo sobre una rama | Pendiente |
 | 5 · Sistema de mundos | Módulos por mundo, transición entre mundos sin recargar ni perder la conversación | Pendiente |
 | 6 · Mundos restantes | Arenal, Caribe, Pacífico, Bandera y CB Pilot Original con su ambiente | Pendiente |
