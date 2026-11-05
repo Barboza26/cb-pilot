@@ -2,7 +2,7 @@
 
 **CB Pilot**, la inteligencia artificial de propósito general creada por **CeBe Studio** en Costa Rica 🇨🇷. Mascota: **Pilo**, una lapa roja con gafas de aviador. Habla por defecto en **tico amigable con ustedeo** (también neutro o formal) y siempre adapta el tono al contexto.
 
-Referencia visual: el ícono con las letras **CB** grandes y el tablero conceptual (mundos inmersivos, cabina de mando, expresiones de Pilo).
+Referencia visual: el **emblema oficial de Pilo** (lapa roja con goggles y audífono «CB», `public/assets/img/pilo-emblema.svg`; originales en `marca/`) y el tablero conceptual (mundos inmersivos, cabina de mando, expresiones de Pilo). El emblema se usa como logo, ícono de la app, favicon y avatar.
 
 | Fase | Qué incluye | Estado |
 |---|---|---|
@@ -13,7 +13,7 @@ Referencia visual: el ícono con las letras **CB** grandes y el tablero conceptu
 | 5 · Sistema de mundos | Módulos por mundo, transición entre mundos sin recargar ni perder la conversación | Pendiente |
 | 6 · Mundos restantes | Arenal, Caribe, Pacífico, Bandera y CB Pilot Original con su ambiente | Pendiente |
 | 7 · Biblioteca descargable | Vista previa, tamaño, instalar/activar y caché local | Pendiente |
-| 8 · PWA | Service Worker, caché controlada, instalación, actualizaciones, sin conexión | Pendiente (ya hay manifiesto e íconos provisionales) |
+| 8 · PWA | Service Worker, caché controlada, instalación, actualizaciones, sin conexión | Pendiente (ya hay manifiesto e íconos oficiales, incluido el maskable) |
 | 9 · Funciones avanzadas | Chats sincronizados, memoria opcional con controles, documentos Word/PDF/Excel, imágenes, voz, planes Gratuito / Intermedio / Pro, pagos | Pendiente — se propone arquitectura antes de implementar |
 
 ## Lo que ya funciona (no se toca sin necesidad)

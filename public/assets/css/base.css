@@ -62,7 +62,7 @@ h1,h2,h3{font-family:var(--f-title);line-height:1.08;letter-spacing:-.02em;font-
 .logo-orb{width:32px;height:32px;border-radius:50%;flex:none;position:relative;background:conic-gradient(from 120deg,var(--blue),var(--cyan),var(--violet),var(--blue));box-shadow:0 0 18px rgba(var(--a2),.4);display:grid;place-items:center;font:800 .62rem/1 var(--f-title);color:#fff}
 .logo-orb::after{content:"";position:absolute;inset:3px;border-radius:50%;background:radial-gradient(circle at 35% 30%,rgba(var(--a1),.5),#070D1C 72%)}
 .logo-orb span{position:relative;z-index:1;color:#fff}
-.logo-icon{width:36px;height:36px;flex:none;border-radius:10px;box-shadow:0 0 0 1px rgba(var(--a2),.25),0 6px 18px -6px rgba(var(--a1),.8)}
+.logo-icon{width:36px;height:36px;flex:none;border-radius:50%;filter:drop-shadow(0 4px 10px rgba(var(--a1),.45))}
 /* Logotipo: CB grande en blanco + Pilot en azul eléctrico */
 .wm{font:800 1.12rem/1 var(--f-title);letter-spacing:-.01em;white-space:nowrap}
 .wm b{color:var(--strong);font-weight:800}
