@@ -231,7 +231,7 @@ body.pilot-body{height:100dvh;overflow:hidden}
 .pl-pcard.is-best{border-color:rgba(96,165,250,.6);box-shadow:var(--glow)}
 .pl-pcard.is-current{outline:2px solid var(--cyan);outline-offset:2px}
 .pl-pcard h3{font-size:1.25rem;margin:0}
-.pl-pcard .pl-price{font:700 1.5rem/1.1 var(--f-title)}
+.pl-pcard .pl-price{font:700 1.5rem/1.1 var(--f-body);font-variant-numeric:tabular-nums}
 .pl-pcard .pl-price small{font:500 .8rem var(--f-body);color:var(--gray)}
 .pl-pcard ul{list-style:none;padding:0;display:grid;gap:.45rem;font-size:.88rem;color:var(--text-2);flex:1}
 .pl-pcard li{display:flex;gap:.5rem}
@@ -544,3 +544,94 @@ body.pilot-body{height:100dvh;overflow:hidden}
 [data-theme="light"] .pl-code pre{color:#0f172a}
 [data-theme="light"] .pl-code-bar{background:#e2e8f0}
 [data-theme="light"] .pl-code-bar button:hover{color:#0f172a}
+
+/* =====================================================================
+   Celular (hasta 640px): diseño propio, no una versión encogida de la computadora.
+   - Barra de arriba limpia: menú, título, mundos y planes (idioma y tema están en Configuración).
+   - Inicio: Pilo y el saludo al centro; sugerencias en una fila deslizable y la caja de texto abajo, al alcance del pulgar.
+   - Chat: respuestas a todo el ancho, botones solo con íconos en una fila, Pilo pequeño sin tapar el texto.
+   - Ventanas como hojas que suben desde abajo.
+   ===================================================================== */
+@media (max-width:640px){
+  /* Barra superior */
+  .pl-top{gap:.35rem;min-height:52px;padding:.45rem .5rem}
+  .pl-top .lang,#pl-dark-btn{display:none}
+  .pl-top .pl-icon{width:40px;height:40px}
+  #pl-title{font-size:1rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pl-plans-btn{padding:.45rem .6rem}
+
+  /* Inicio */
+  .pl-view.is-empty{justify-content:flex-end}
+  .pl-view.is-empty .pl-scroll{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center}
+  .pl-view.is-empty .pl-thread{padding:0 0 .5rem}
+  .pl-hello{gap:.55rem;padding:.5rem .5rem 0}
+  .pl-hello .pl-pilo{width:118px;height:118px}
+  .pl-hello .pilo-hero.pilo-pose{width:112px;height:112px}
+  .pl-hello h2{font-size:2.1rem}
+  .pl-hello .pl-sub{font-size:1.05rem;margin-top:-.2rem}
+  .pl-hello p.pl-lead{font-size:.92rem;max-width:30ch}
+  .pl-badge{font-size:.62rem;margin-bottom:0}
+  .pl-view.is-empty .pl-quick{order:1;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;scrollbar-width:none;width:100%;margin:0 0 .55rem;padding:0 .75rem;scroll-snap-type:x proximity;-webkit-mask:linear-gradient(90deg,transparent,#000 12px,#000 calc(100% - 24px),transparent)}
+  .pl-view.is-empty .pl-quick::-webkit-scrollbar{display:none}
+  .pl-qa{flex:none;scroll-snap-align:start;font-size:.8rem;padding:.5rem .8rem}
+  .pl-composer{order:2;width:calc(100% - .9rem);border-radius:22px;padding:.5rem .5rem .45rem}
+  .pl-composer textarea{font-size:16px} /* 16px evita que el iPhone haga zoom al escribir */
+  .pl-note{order:3;font-size:.64rem;line-height:1.35;padding:.4rem 1.2rem calc(.5rem + env(safe-area-inset-bottom,0px))}
+  .pl-view:not(.is-empty) .pl-note{display:none}
+  .pl-view:not(.is-empty) .pl-composer{margin-bottom:calc(.45rem + env(safe-area-inset-bottom,0px))}
+
+  /* Velo parejo detrás de la conversación (en pantallas angostas la columna central dejaba franjas) */
+  .pl-main:has(#pl-chat:not(.is-empty)) .pl-scene::after,.pl-main:has(#pl-tasks:not([hidden])) .pl-scene::after{background:linear-gradient(180deg,rgba(var(--bg-rgb),.72),rgba(var(--bg-rgb),.8) 30%,rgba(var(--bg-rgb),.88))}
+  /* Mensajes */
+  .pl-thread{width:calc(100% - 1.6rem);gap:1.25rem;padding-top:1rem}
+  .pl-msg.user .pl-bubble{max-width:88%;padding:.7rem .95rem;border-radius:18px 18px 6px 18px}
+  .pl-msg.bot{grid-template-columns:26px minmax(0,1fr);column-gap:.5rem;row-gap:.35rem}
+  .pl-msg.bot .pl-ava{width:26px;height:26px;grid-row:1}
+  .pl-msg.bot>.pl-who{grid-column:2;grid-row:1;align-self:center}
+  .pl-msg.bot>.pl-body,.pl-msg.bot>.pl-tools{grid-column:1/-1}
+  .pl-msg.bot>.pl-tools{opacity:1;gap:0;margin-left:-.35rem}
+  .pl-msg.bot>.pl-tools button{padding:.45rem .55rem}
+  .pl-msg.bot>.pl-tools button span{display:none}
+  .pl-msg.user .pl-tools button{padding:.3rem .4rem;font-size:.74rem}
+  .pl-code pre{font-size:.78rem;padding:.8rem}
+  .md table{font-size:.85rem}
+  .pl-doc{padding:.8rem}
+  .pl-doc-ic{width:42px;height:42px;font-size:1.45rem}
+
+  /* Pilo sobre la caja de texto: pequeño y a la orilla */
+  /* Pilo va dentro de la caja de texto, al lado del botón de enviar: siempre visible y sin tapar mensajes */
+  .pl-dock{width:46px;height:46px;top:auto;bottom:.45rem;right:3.9rem;filter:drop-shadow(0 4px 8px rgba(0,0,0,.35))}
+  .pl-view:not(.is-empty) .pl-thread{padding-bottom:1.2rem}
+
+  /* Ventanas: hojas desde abajo */
+  .pdialog{width:100%;max-width:100%;max-height:92dvh;margin:auto 0 0;border-radius:24px 24px 0 0;border-width:1px 0 0;animation:pl-sheet .28s cubic-bezier(.2,.9,.3,1)}
+  .pdialog .pd-in{padding:1.4rem 1.1rem calc(1.4rem + env(safe-area-inset-bottom,0px));gap:.9rem}
+  .pdialog .pd-in::before{content:"";justify-self:center;width:42px;height:5px;border-radius:99px;background:var(--line-strong);margin:-.6rem 0 .1rem}
+  .pl-ph{padding-right:2.6rem}
+  .pl-ph h2,.pd-in h2{font-size:1.45rem}
+  .pl-ph p{font-size:.85rem}
+  .pdialog [data-close]:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(var(--a2),.35)}
+  .pl-sec{padding:.9rem}
+
+  /* Mundos: dos columnas compactas */
+  .pl-worlds{grid-template-columns:1fr 1fr;gap:.6rem}
+  .pl-world{grid-template-rows:86px auto;border-radius:14px}
+  .pl-world .wp img{width:34px;height:34px;right:6px;bottom:5px}
+  .pl-world .wb{padding:.55rem .6rem .65rem}
+  .pl-world b{font-size:.84rem;line-height:1.2}
+  .pl-world small{display:none}
+  .pl-world{grid-template-rows:96px auto}
+
+  /* Cabina: medidor compacto al lado del texto */
+  .pl-ring{grid-template-columns:96px 1fr;justify-items:start;text-align:left;column-gap:1rem;row-gap:.2rem;padding:.9rem}
+  .pl-ring svg{width:96px;height:96px;grid-row:span 3}
+  .pl-ring .rv{font-size:1.7rem;align-self:end}
+  .pl-ring .pl-badge{align-self:start}
+  .pl-stats{grid-template-columns:1fr 1fr;gap:.5rem}
+  .pl-modes,.pl-modes.pl-modes-2{grid-template-columns:1fr}
+  .pl-mode{grid-template-columns:auto 1fr;column-gap:.8rem;text-align:left;padding:.85rem}
+  .pl-mode .mi{grid-row:span 3;align-self:center}
+  .pl-row{flex-wrap:wrap}
+}
+@keyframes pl-sheet{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.pdialog{animation:none}}
