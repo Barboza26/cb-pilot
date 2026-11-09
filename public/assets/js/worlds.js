@@ -8,6 +8,9 @@
   if (!host) return;
   // Mundo de la app → nombre de los archivos en /worlds/
   const FILES = { selva: "selva", arenal: "arenal", caribe: "caribe", pacifico: "atardecer", bandera: "bandera" };
+  // Dirección completa de la carpeta de fondos, calculada desde este archivo (assets/js/worlds.js):
+  // funciona igual en el sitio publicado, en la computadora y en la demo, sin depender de dónde se use la imagen.
+  const BASE = new URL("../../worlds/", document.currentScript?.src || location.href).href;
   let scene = null, current = "";
   const reduce = () => "ahorro" in d.dataset || matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -24,13 +27,13 @@
     const el = document.createElement("div");
     el.className = `pl-scene scene-${w}`;
     el.setAttribute("aria-hidden", "true");
-    el.innerHTML = `<i class="ly" style="--d:url(/worlds/${f}-desktop.webp);--m:url(/worlds/${f}-mobile.webp)"></i>`;
+    el.innerHTML = `<i class="ly" style="--d:url('${BASE}${f}-desktop.webp');--m:url('${BASE}${f}-mobile.webp')"></i>`;
     host.prepend(el);
     scene = el;
     // Fundido de entrada cuando la imagen que corresponde a esta pantalla ya cargó.
     const img = new Image();
     img.onload = img.onerror = () => requestAnimationFrame(() => el.isConnected && el.classList.add("is-in"));
-    img.src = `/worlds/${f}-${matchMedia("(orientation: portrait)").matches ? "mobile" : "desktop"}.webp`;
+    img.src = `${BASE}${f}-${matchMedia("(orientation: portrait)").matches ? "mobile" : "desktop"}.webp`;
   }
   new MutationObserver(mount).observe(d, { attributes: true, attributeFilter: ["data-accent", "data-erupcion"] });
   mount();
