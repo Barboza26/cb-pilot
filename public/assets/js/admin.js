@@ -68,10 +68,10 @@
     async resumen(v) {
       const d = await api("/api/admin/pilot"), c = d.config, sp = d.spend, P = d.plans;
       const usd = n => "US$" + Number(n || 0).toFixed(Number(n || 0) < 1 ? 3 : 2);
-      const pct = Math.min(100, Math.round((sp.usd / c.budgetUsd) * 100));
+      const pct = Math.min(100, Math.round((sp.usd / (c.budgetUsd + (sp.extra || 0))) * 100));
       const days = Object.entries(sp.days || {}).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 10);
       v.innerHTML = `${d.keyConfigured ? "" : `<p class="form-msg">Falta la clave de la IA: en Netlify → Project configuration → Environment variables agregá <code>ANTHROPIC_API_KEY</code> (se crea en console.anthropic.com) y volvé a publicar. Mientras tanto CB Pilot muestra «todavía no está activado».</p>`}
-        <div class="kpis"><div class="card kpi"><span class="muted">Gasto de ${esc(d.month)}</span><b>${usd(sp.usd)}</b><small class="muted">${pct} % de ${usd(c.budgetUsd)}</small></div>
+        <div class="kpis"><div class="card kpi"><span class="muted">Gasto de ${esc(d.month)}</span><b>${usd(sp.usd)}</b><small class="muted">${pct} % de ${usd(c.budgetUsd + (sp.extra || 0))}${sp.extra ? ` (base ${usd(c.budgetUsd)} + ${usd(sp.extra)} por planes pagados)` : ""}</small></div>
           <div class="card kpi"><span class="muted">Mensajes del mes</span><b>${sp.msgs || 0}</b></div>
           ${Object.keys(P).map(k => `<div class="card kpi"><span class="muted">Plan ${esc(P[k].name)}</span><b>${sp.plans?.[k]?.msgs || 0}</b><small class="muted">${usd(sp.plans?.[k]?.usd)}</small></div>`).join("")}</div>
         <form class="card checkout" id="pcfg"><h2>Configuración</h2>

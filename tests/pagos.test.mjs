@@ -76,3 +76,12 @@ test("sin las llaves de ONVO, el pago en línea queda apagado", async () => {
   assert.equal((await call("POST", "/api/pay/checkout", { plan: "pro" }, { cookie: c })).data.error, "pay_off");
   process.env.ONVO_SECRET_KEY = k;
 });
+
+test("cada pago suma presupuesto del mes para que los clientes que pagan no se queden sin servicio", async () => {
+  const { spend } = await import("../netlify/lib/pilot.mjs");
+  const before = (await spend()).extra;
+  const d = (await call("POST", "/api/account/register", { name: "Dani", email: "dani@pagos.test", password: "clave-dani-123" })).cookie;
+  await call("POST", "/api/pay/checkout", { plan: "pro" }, { cookie: d });
+  await hook({ type: "checkout-session.succeeded", data: { id: "cs_" + sent.length } });
+  assert.equal((await spend()).extra, before + 8);
+});

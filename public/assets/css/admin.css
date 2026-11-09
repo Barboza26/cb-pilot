@@ -34,3 +34,13 @@
 .kb-hit p{margin-top:.5rem;color:var(--text-2);font-size:.88rem;white-space:pre-wrap}
 .kb-pre{white-space:pre-wrap;font:.82rem/1.6 var(--f-mono);color:var(--text-2);max-height:420px;overflow:auto;background:rgba(var(--bg-rgb),.6);padding:1rem;border-radius:12px}
 @media (max-width:1000px){.kb-add{grid-template-columns:1fr}}
+/* Panel en celular: la barra de arriba no se sale de la pantalla */
+@media (max-width:560px){
+  .adm-top{gap:.5rem;padding:.6rem 1rem;flex-wrap:wrap}
+  .adm-badge{display:none}
+  .adm-site{padding:.4rem .7rem;font-size:.8rem}
+  .adm-nav{top:58px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+  .adm-nav button{flex:none;padding:.5rem .8rem;font-size:.85rem}
+  .adm-main{width:calc(100% - 1.5rem)}
+  .adm-main table{display:block;overflow-x:auto}
+}

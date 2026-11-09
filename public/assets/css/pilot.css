@@ -686,3 +686,28 @@ body.pilot-body{height:100dvh;overflow:hidden}
   .pl-side>*{flex-shrink:0}
   .pl-side .pl-list{flex:1 0 auto;min-height:150px;max-height:none;overflow:visible}
 }
+.pl-expiry{margin:0;padding:.45rem .6rem;border-radius:10px;font-size:.78rem;color:#92400e;background:#fef3c7;border:1px solid #fcd34d}
+/* App instalada a pantalla completa (iPhone/Android): nada queda debajo de la barra de la hora, la muesca o los gestos */
+.pl-top{padding-top:max(.45rem,env(safe-area-inset-top,0px));padding-left:max(.8rem,env(safe-area-inset-left,0px));padding-right:max(.8rem,env(safe-area-inset-right,0px))}
+.pl-side{padding-top:max(1rem,env(safe-area-inset-top,0px))}
+.pl-view:not(.is-empty) .pl-composer,.pl-view.is-empty .pl-note{margin-bottom:env(safe-area-inset-bottom,0px)}
+@media (max-width:640px){.pl-top{padding-top:max(.45rem,env(safe-area-inset-top,0px))}}
+/* Tablet: Pilo va dentro de la caja de texto (como en el celular) para no tapar los mensajes */
+@media (max-width:900px){
+  .pl-dock{width:46px;height:46px;top:auto;bottom:.45rem;right:3.9rem;filter:drop-shadow(0 4px 8px rgba(0,0,0,.35))}
+  .pl-view:not(.is-empty) .pl-thread{padding-bottom:1.2rem}
+}
+/* X de cerrar ventanas: aro suave al enfocarla (no el borde grueso) */
+.pdialog [data-close]:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(var(--a2),.4)}
+.pdialog [data-close]:focus:not(:focus-visible){outline:none}
+/* Celulares chicos (iPhone SE, 375 px o menos): todo en una línea */
+@media (max-width:400px){
+  .pl-bar{flex-wrap:nowrap;gap:.2rem}
+  .pl-tool{width:34px;height:34px}
+  .pl-pick{padding:0 .5rem;font-size:.74rem;min-width:0}
+  .pl-dock{display:none}
+  .pl-new{white-space:nowrap;font-size:.92rem}
+  .pl-hello h2{font-size:1.85rem}
+  .pl-hello .pl-pilo{width:96px;height:96px}
+  .pl-hello .pilo-hero.pilo-pose{width:92px;height:92px}
+}

@@ -162,13 +162,23 @@ function limitsFor(plan, cfg) {
   return { perDay: plan === "gratis" ? cfg.freePerDay : p.perDay, perMonth: p.perMonth };
 }
 export async function spend() {
-  const r = await getJSON("pilot", `gasto/${MONTH()}`);
-  return r?.data || { usd: 0, msgs: 0, in: 0, out: 0, plans: {} };
+  const [r, extra] = await Promise.all([getJSON("pilot", `gasto/${MONTH()}`), budgetExtra()]);
+  return { ...(r?.data || { usd: 0, msgs: 0, in: 0, out: 0, plans: {} }), extra };
+}
+// Presupuesto extra del mes: cada plan pagado con ONVO suma dólares al tope, para que los clientes que pagan
+// nunca se queden sin servicio porque el plan gratis gastó el presupuesto base. Se configura con
+// PILOT_BUDGET_PER_PRO / PILOT_BUDGET_PER_MAX (US$ por pago; por defecto 8 y 15).
+export const BUDGET_PER = () => ({ pro: Number(process.env.PILOT_BUDGET_PER_PRO) || 8, max: Number(process.env.PILOT_BUDGET_PER_MAX) || 15 });
+export async function budgetExtra() { return (await getJSON("pilot", `extra/${MONTH()}`))?.data?.usd || 0; }
+export async function addBudget(plan) {
+  const add = BUDGET_PER()[plan] || 0;
+  if (!add) return;
+  await update("pilot", `extra/${MONTH()}`, c => ({ usd: Math.round(((c?.usd || 0) + add) * 100) / 100, pagos: (c?.pagos || 0) + 1 }), { init: null });
 }
 function budgetGate(plan, cfg, s) {
   if (!cfg.enabled) fail(503, "pilot_paused", "CB Pilot está en mantenimiento. Vuelva en un ratito.");
   if (!keyConfigured()) fail(503, "pilot_off", "CB Pilot todavía no está activado en este sitio.");
-  if (s.usd >= cfg.budgetUsd) fail(503, "budget", "CB Pilot alcanzó su límite de uso de este mes. Escríbanos por WhatsApp y le ayudamos.");
+  if (s.usd >= cfg.budgetUsd + (s.extra || 0)) fail(503, "budget", "CB Pilot alcanzó su límite de uso de este mes. Escríbanos por WhatsApp y le ayudamos.");
   if (plan === "gratis" && s.usd >= cfg.budgetUsd * cfg.freeShare) fail(503, "free_paused", "El plan gratis llegó a su límite este mes. Con un plan Pro o Max puede seguir usando CB Pilot.");
 }
 /** Antes de responder: solo revisa que quede combustible (lo que se gasta se sabe al terminar). */

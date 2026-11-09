@@ -13,6 +13,7 @@ import crypto from "node:crypto";
 import { getJSON, putJSON, update } from "./db.mjs";
 import { fail, now } from "./util.mjs";
 import { setPlan, activePlan } from "./users.mjs";
+import { addBudget } from "./pilot.mjs";
 
 const API = () => (process.env.ONVO_API_URL || "https://api.onvopay.com").replace(/\/$/, "");
 const PRICE = { pro: () => process.env.ONVO_PRICE_PRO, max: () => process.env.ONVO_PRICE_MAX };
@@ -89,5 +90,6 @@ export async function handleWebhook(req, body) {
   if (!u) { console.error("[pagos] pago de una cuenta que ya no existe", applied.userId, id); return { handled: false }; }
   const from = activePlan(u) === applied.plan ? Date.parse(u.planExpiresAt) : Date.now();
   await setPlan(u.id, applied.plan, new Date(from + DAYS * 864e5).toISOString(), null);
+  await addBudget(applied.plan).catch(e => console.error("[pagos] no se pudo sumar presupuesto", e));
   return { handled: true, plan: applied.plan, userId: u.id };
 }

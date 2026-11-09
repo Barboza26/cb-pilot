@@ -526,10 +526,21 @@
     box.innerHTML = `<div class="pl-plan-row"><span class="pl-badge ${info.plan}">${T("Plan", "Plan")} ${esc(planName(info.plan))}</span><small>${esc(info.label)}</small></div>
       ${fuelGauge(100 - pct)}
       <small>${pct >= 100 ? T("Sin combustible: se recarga a medianoche ⛽", "Out of fuel: refills at midnight ⛽") : mpct !== null ? T(`Uso del mes: ${mpct} %`, `Monthly usage: ${mpct}%`) : T("Se recarga todos los días a medianoche ⛽", "Refills every day at midnight ⛽")}</small>
-      <button type="button" class="pl-upgrade" data-act="plans">${info.plan === "gratis" ? T("✦ Mejorar plan", "✦ Upgrade plan") : T("Ver mi plan", "View my plan")}</button>`;
-    hint();
+      ${expiryHTML()}
+      <button type="button" class="pl-upgrade" data-act="plans">${info.plan === "gratis" ? T("✦ Mejorar plan", "✦ Upgrade plan") : daysLeft() !== null && daysLeft() <= 5 ? T("Renovar plan", "Renew plan") : T("Ver mi plan", "View my plan")}</button>`;
+    hint(); expiryNote();
   }
   const crc = n => "₡" + Number(n).toLocaleString(A.lang === "en" ? "en-US" : "es-CR");
+  // Vencimiento del plan pagado: aviso en el menú los últimos 5 días y una nota al abrir la app (una vez por día).
+  const daysLeft = () => info?.plan && info.plan !== "gratis" && info.expiresAt ? Math.max(0, Math.ceil((Date.parse(info.expiresAt) - Date.now()) / 864e5)) : null;
+  const expiryText = d => d <= 0 ? T("Su plan vence hoy.", "Your plan expires today.") : d === 1 ? T("Su plan vence mañana.", "Your plan expires tomorrow.") : T(`Su plan vence en ${d} días.`, `Your plan expires in ${d} days.`);
+  function expiryHTML() { const d = daysLeft(); return d !== null && d <= 5 ? `<p class="pl-expiry" role="status">⏳ ${expiryText(d)}</p>` : ""; }
+  function expiryNote() {
+    const d = daysLeft(); if (d === null || d > 5) return;
+    const key = "cbpilot-aviso-vence", today = new Date().toDateString();
+    if (read(key, "") === today) return; write(key, today);
+    setTimeout(() => note(expiryText(d) + " " + T("Puede renovarlo en Planes y se le suman 30 días.", "You can renew it in Plans and 30 days are added."), true), 1200);
+  }
   function openPlans() {
     const p = info?.plans || {}, cur = info?.plan || "gratis";
     const times = k => String(Math.round(((p[k]?.perDay || 1) / (p.gratis?.perDay || 1)) * 10) / 10).replace(".", A.lang === "en" ? "." : ",");
@@ -1028,6 +1039,12 @@
   // ---------------- Inicio ----------------
   // Despegue: la animación de bienvenida se ve una vez por sesión del navegador.
   try { if (sessionStorage.getItem("cbpilot-despegue")) $("#pl-splash")?.remove(); else { sessionStorage.setItem("cbpilot-despegue", "1"); setTimeout(() => $("#pl-splash")?.remove(), 2000); } } catch { $("#pl-splash")?.remove(); }
+  // App instalable (y sin conexión, abre lo último guardado). Solo en https o en la computadora local.
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost") && !/claude|claudeusercontent/.test(location.hostname)) {
+    addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+  }
+  addEventListener("offline", () => note(T("Se quedó sin internet. Puede leer sus chats; para que Pilo responda hace falta conexión.", "You're offline. You can read your chats; Pilo needs a connection to answer.")));
+  addEventListener("online", () => { note(T("Conexión recuperada.", "Back online."), true); refreshStatus(); });
   // Vuelta desde la página de pago de ONVO: el plan se activa cuando ONVO avisa (puede tardar unos segundos).
   const pago = new URLSearchParams(location.search).get("pago");
   if (pago) {

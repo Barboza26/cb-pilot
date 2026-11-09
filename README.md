@@ -134,3 +134,12 @@ El cliente toca «Pagar» en Planes, paga en la página de ONVO y el plan se act
 4. Probar en modo Test con las tarjetas de prueba de ONVO y revisar que el plan aparezca activo en la cuenta.
 
 Los precios que muestra la app se cambian en el panel (`/admin`); deben coincidir con los de ONVO.
+
+## Presupuesto de la IA que crece con las ventas
+`PILOT_BUDGET_USD` es el tope base del mes (por defecto US$25). Cada plan pagado con ONVO suma al tope del mes
+`PILOT_BUDGET_PER_PRO` (US$8) o `PILOT_BUDGET_PER_MAX` (US$15), así los clientes que pagan nunca se quedan sin
+servicio. El plan gratis se pausa al llegar a su parte del tope base. El panel muestra base + extra.
+
+## App instalable
+`public/sw.js` permite instalarla («Agregar a pantalla de inicio») y abrirla sin internet con lo último guardado.
+Siempre busca primero la versión nueva, así que las actualizaciones llegan de inmediato. La API nunca se guarda.
