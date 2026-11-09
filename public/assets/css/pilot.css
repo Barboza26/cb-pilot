@@ -503,11 +503,11 @@ body.pilot-body{height:100dvh;overflow:hidden}
 .pl-main.has-world::before,.pl-main.has-world::after{display:none}
 .pl-scene{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none;opacity:0;transition:opacity .9s ease;background:var(--bg)}
 .pl-scene.is-in{opacity:1}
-.pl-scene .ly{position:absolute;inset:-2.5%;background:var(--d) center/cover no-repeat;will-change:transform;
-  transform:translate3d(calc(var(--px,0) * -18px),calc(var(--py,0) * -10px),0) scale(1.02);transition:transform .5s ease-out;animation:world-breathe 50s ease-in-out infinite alternate}
+.pl-scene .ly{position:absolute;inset:-14px;background:var(--d) center/cover no-repeat;will-change:transform;
+  transform:translate3d(calc(var(--px,0) * -18px),calc(var(--py,0) * -10px),0);transition:transform .5s ease-out;animation:world-breathe 50s ease-in-out infinite alternate}
 @media (orientation:portrait){.pl-scene .ly{background-image:var(--m)}}
 .scene-bandera{background:#0b152b}
-@keyframes world-breathe{from{scale:1}to{scale:1.06}}
+@keyframes world-breathe{from{scale:1}to{scale:1.025}}
 /* Velo para que el texto se lea siempre: más oscuro arriba (barra) y abajo (caja de texto) */
 .pl-scene::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(var(--bg-rgb),.55) 0,rgba(var(--bg-rgb),.08) 22%,rgba(var(--bg-rgb),.14) 60%,rgba(var(--bg-rgb),.86) 100%)}
 /* Con conversación: una columna central más opaca detrás de los mensajes */
@@ -634,3 +634,5 @@ body.pilot-body{height:100dvh;overflow:hidden}
 }
 @keyframes pl-sheet{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.pdialog{animation:none}}
+/* En celular el fondo queda quieto: sin agrandarlo, para que se vea nítido */
+@media (max-width:640px){.pl-scene .ly{inset:0;animation:none;transform:none}}
