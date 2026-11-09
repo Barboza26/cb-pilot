@@ -507,7 +507,6 @@ body.pilot-body{height:100dvh;overflow:hidden}
   transform:translate3d(calc(var(--px,0) * -18px),calc(var(--py,0) * -10px),0) scale(1.02);transition:transform .5s ease-out;animation:world-breathe 50s ease-in-out infinite alternate}
 @media (orientation:portrait){.pl-scene .ly{background-image:var(--m)}}
 .scene-bandera{background:#0b152b}
-@media (orientation:portrait){.scene-bandera .ly{background-size:100% auto;background-position:center 30%}}
 @keyframes world-breathe{from{scale:1}to{scale:1.06}}
 /* Velo para que el texto se lea siempre: más oscuro arriba (barra) y abajo (caja de texto) */
 .pl-scene::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(var(--bg-rgb),.55) 0,rgba(var(--bg-rgb),.08) 22%,rgba(var(--bg-rgb),.14) 60%,rgba(var(--bg-rgb),.86) 100%)}

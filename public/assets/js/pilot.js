@@ -580,9 +580,9 @@
   // Mundos: hoy cambian la paleta y la iluminación; los paisajes animados llegan en las próximas fases.
   const WORLDS = [
     ["original", "CB Pilot Original", "CB Pilot Original", "La cabina tecnológica de CeBe Studio: azul profundo y luz eléctrica.", "CeBe Studio's tech cockpit: deep blue and electric light."],
-    ["selva", "Selva costarricense", "Costa Rican rainforest", "Valle de bosque nuboso con río, cascada y neblina.", "Cloud-forest valley with a river, waterfall and mist."],
+    ["selva", "Selva costarricense", "Costa Rican rainforest", "Valle de selva con un río entre la neblina.", "Rainforest valley with a river through the mist."],
     ["arenal", "Volcán Arenal", "Arenal Volcano", "El cono del volcán sobre la laguna, rodeado de selva.", "The volcano cone over the lake, surrounded by rainforest."],
-    ["caribe", "Caribe costarricense", "Costa Rican Caribbean", "Mar turquesa, arena clara y palmeras.", "Turquoise sea, pale sand and palm trees."],
+    ["caribe", "Caribe costarricense", "Costa Rican Caribbean", "Playa de palmeras, arena clara y mar turquesa.", "Palm-lined beach, pale sand and turquoise sea."],
     ["pacifico", "Atardecer del Pacífico", "Pacific sunset", "El sol sobre el horizonte y su reflejo dorado.", "The sun on the horizon and its golden reflection."],
     ["bandera", "Bandera de Costa Rica", "Costa Rican flag", "La bandera con sus proporciones y colores oficiales.", "The flag with its official proportions and colors."]
   ];
@@ -713,7 +713,7 @@
       const ac = window.CBPILOT_THEME?.accent || "original";
       return `<div class="pl-ph"><div><span class="eyebrow">CB Pilot</span><h2 id="pl-panel-title">${T("Explorar mundos", "Explore worlds")}</h2><p>${T("Elija el ambiente de su cabina. Todos están incluidos en todos los planes.", "Pick your cockpit's ambience. All of them are included in every plan.")}</p></div>${closeX}</div>
         <div class="pl-worlds">${WORLDS.map(([k, es, en, des, den]) => `<button type="button" class="pl-world" data-world="${k}" aria-pressed="${ac === k}"><span class="wp wp-${k}">${ac === k ? `<span class="tag">${T("Activo", "Active")}</span>` : ""}<img src="/assets/img/pilo-emblema.svg" alt=""></span><span class="wb"><b>${esc(T(es, en))}</b><small>${esc(T(des, den))}</small></span></button>`).join("")}</div>
-        <div class="pl-sec pl-erupcion"><div class="pl-row"><div><h3>🌋 ${T("Volcán Arenal en erupción", "Arenal Volcano erupting")}</h3><p>${T("Cambia el mundo Volcán Arenal a su versión con lava y ceniza al atardecer.", "Switches the Arenal Volcano world to its version with lava and ash at sunset.")}</p></div><button type="button" class="pl-switchbtn" role="switch" aria-checked="${!!window.CBPILOT_THEME?.erupcion}" data-set="erupcion:toggle" aria-label="${T("Volcán Arenal en erupción", "Arenal Volcano erupting")}"></button></div></div>
+        <div class="pl-sec pl-erupcion"><div class="pl-row"><div><h3>🌋 ${T("Volcán Arenal en erupción", "Arenal Volcano erupting")}</h3><p>${T("Cambia el mundo Volcán Arenal a su versión con lava y columna de ceniza.", "Switches the Arenal Volcano world to its version with lava and ash at sunset.")}</p></div><button type="button" class="pl-switchbtn" role="switch" aria-checked="${!!window.CBPILOT_THEME?.erupcion}" data-set="erupcion:toggle" aria-label="${T("Volcán Arenal en erupción", "Arenal Volcano erupting")}"></button></div></div>
         <p class="muted">${T("Cada mundo tiene su propio paisaje, con una versión para computadora y otra para celular. Puede cambiarlo cuando quiera: la conversación no se pierde.", "Each world has its own landscape, with a desktop and a phone version. Switch anytime: your conversation stays.")}</p>`;
     },
     cabina() {
