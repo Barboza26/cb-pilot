@@ -11,7 +11,7 @@
     "pl.openPanel": "Open history", "pl.closePanel": "Close panel", "pl.ask": "Your message for CB Pilot", "pl.placeholder": "Tell Pilo what you need…", "pl.send": "Send",
     "pl.note": "CB Pilot can make mistakes: double-check important info. Don't share passwords or sensitive data.",
     "pl.tasks.eyebrow": "Control tower", "pl.tasks.title": "Several missions, <span class='grad'>at the same time</span>.",
-    "pl.tasks.lead": "Write one task per line (or pick a route) and Pilo launches them in parallel. Each card can be copied or opened as a chat to keep going.",
+    "pl.tasks.lead": "To ask Pilo for <b>several things at once</b>: write one request per line and Pilo does them all at the same time, each in its own card. Meanwhile you can keep chatting. Example: “Write 5 posts for my bakery” on one line and “Write the About us section” on another. The routes below have ready-to-use requests.",
     "pl.tasks.input": "Tasks, one per line", "pl.tasks.ph": "E.g.: Write 5 post ideas for my bakery\nWrite the “About us” section of my website\nBuild a 2-week content plan",
     "pl.tasks.go": "✈️ Take off", "pl.tasks.board": "Board", "pl.tasks.clear": "Clear finished",
     "pl.canvas": "Preview", "pl.desktop": "Desktop", "pl.mobile": "Mobile", "pl.download": "Download HTML", "pl.closePreview": "Close preview",
@@ -54,6 +54,7 @@
 
   // Idioma inicial: el elegido antes; si no, el del navegador.
   let saved = null; try { saved = localStorage.getItem("cbpilot-lang"); } catch {}
-  const initial = saved || ((navigator.language || "es").toLowerCase().startsWith("en") ? "en" : "es");
+  // Siempre en español, salvo que la persona haya elegido inglés (Configuración → Idioma). No depende del idioma del teléfono.
+  const initial = saved === "en" ? "en" : "es";
   queueMicrotask(() => setLang(initial, false));
 })();
