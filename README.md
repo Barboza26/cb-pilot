@@ -117,3 +117,20 @@ Con `ANTHROPIC_API_KEY=sk-ant-… ADMIN_SETUP_CODE=codigo-local-123 node tests/s
 | Pruebas, IA simulada y servidor local | `tests/` |
 
 Para cambiar lo que Pilot sabe de CeBe Studio (demos, precios, enlaces), editá `CEBE` en `netlify/lib/pilot.mjs`.
+
+## Pagos en línea con ONVO (tarjeta y SINPE Móvil)
+
+El cliente toca «Pagar» en Planes, paga en la página de ONVO y el plan se activa solo en su cuenta por 30 días
+(si ya tenía ese plan, se suman 30 días). Sin las variables de abajo, los planes siguen por WhatsApp y códigos.
+
+1. **ONVO → Productos:** crear dos productos con precio mensual en colones: *CB Pilot Pro* (₡10 000) y
+   *CB Pilot Max* (₡25 000). Copiar el **ID de cada precio**.
+2. **ONVO → Desarrolladores → Webhooks:** registrar `https://SU-SITIO/api/pay/webhook` con el evento
+   `checkout-session.succeeded` y copiar el **secreto del webhook**.
+3. **Netlify → Environment variables:**
+   - `ONVO_SECRET_KEY` — llave secreta (`onvo_test_…` para probar, `onvo_live_…` para cobrar de verdad)
+   - `ONVO_WEBHOOK_SECRET` — secreto del webhook
+   - `ONVO_PRICE_PRO` y `ONVO_PRICE_MAX` — IDs de los precios
+4. Probar en modo Test con las tarjetas de prueba de ONVO y revisar que el plan aparezca activo en la cuenta.
+
+Los precios que muestra la app se cambian en el panel (`/admin`); deben coincidir con los de ONVO.

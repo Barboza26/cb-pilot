@@ -29,4 +29,5 @@ Chat con Claude en streaming y continuación automática; varios chats a la vez;
 - **Combustible por respuesta:** cada respuesta gasta según lo que escribe y lee Pilo; se muestra «⛽ x %» debajo de cada una.
 - **Cabina de mando explicada:** qué es el combustible, modos de vuelo, modo Ahorro y el plan.
 - **Archivos descargables:** Word, PDF, Excel (con fórmulas) y PowerPoint, armados en el navegador (sin gasto extra de IA). Librerías en `public/assets/vendor/`.
+- **Pagos en línea con ONVO:** botón «Pagar» en Planes (Pro ₡10 000, Max ₡25 000), webhook que activa 30 días del plan una sola vez por pago. Falta: crear productos y webhook en ONVO y poner las variables en Netlify (ver README).
 

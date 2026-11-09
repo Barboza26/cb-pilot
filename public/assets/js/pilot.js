@@ -541,12 +541,15 @@
     const card = k => {
       const price = k === "gratis" ? `${crc(0)} <small>${T("para siempre", "forever")}</small>` : p[k]?.price ? `${crc(p[k].price)} <small>${T("/ mes", "/ month")}</small>` : `<small>${T("Precio por WhatsApp", "Price on WhatsApp")}</small>`;
       const wa = `https://wa.me/${info?.whatsapp || ""}?text=${encodeURIComponent(T(`Hola, quiero el plan ${p[k]?.name || k} de CB Pilot.`, `Hi, I want the CB Pilot ${p[k]?.name || k} plan.`))}`;
-      const cta = k === cur ? `<button class="btn btn-ghost" type="button" disabled>${T("Su plan actual", "Your current plan")}</button>` : k === "gratis" ? "" : `<a class="btn btn-primary" href="${wa}" target="_blank" rel="noopener noreferrer">${T("Quiero", "I want")} ${esc(p[k]?.name || k)}</a>`;
+      const online = info?.payOnline?.[k] && p[k]?.price;
+      const cta = k === "gratis" ? (k === cur ? `<button class="btn btn-ghost" type="button" disabled>${T("Su plan actual", "Your current plan")}</button>` : "")
+        : online ? `<button class="btn btn-primary" type="button" data-act="pay" data-plan="${k}">${k === cur ? T("Sumar 30 días", "Add 30 days") : T(`Pagar ${crc(p[k].price)} al mes`, `Pay ${crc(p[k].price)} per month`)}</button><small class="pl-paynote">${T("Tarjeta o SINPE Móvil · pago seguro con ONVO", "Card or SINPE Móvil · secure payment by ONVO")}</small>`
+        : k === cur ? `<button class="btn btn-ghost" type="button" disabled>${T("Su plan actual", "Your current plan")}</button>` : `<a class="btn btn-primary" href="${wa}" target="_blank" rel="noopener noreferrer">${T("Quiero", "I want")} ${esc(p[k]?.name || k)}</a>`;
       return `<div class="pl-pcard${k === "pro" ? " is-best" : ""}${k === cur ? " is-current" : ""}">${k === "pro" ? `<span class="pl-ribbon">${T("Recomendado", "Recommended")}</span>` : ""}<h3>${esc(planName(k))}</h3><div class="pl-price">${price}</div><ul>${FEAT[k].map(f => `<li>${esc(f)}</li>`).join("")}</ul>${cta}</div>`;
     };
     $("#pl-plans-body").innerHTML = `<div class="pl-dialog-head"><div><span class="eyebrow">CB Pilot</span><h2 id="pl-plans-title">${T("Elija su <span class='grad'>plan</span>", "Choose your <span class='grad'>plan</span>")}</h2></div><button type="button" class="pl-icon" data-close aria-label="${T("Cerrar", "Close")}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
       <div class="pl-plans">${["gratis", "pro", "max"].map(card).join("")}</div>
-      <p class="muted">${T("Paga por SINPE Móvil y le enviamos un código de acceso para activar su plan en cualquier dispositivo.", "Pay via SINPE Móvil and we'll send you an access code to activate your plan on any device.")}</p>
+      <p class="muted">${info?.payOnline?.pro || info?.payOnline?.max ? T("Pague con tarjeta o SINPE Móvil y su plan se activa al instante en su cuenta, por 30 días.", "Pay by card or SINPE Móvil and your plan activates instantly on your account, for 30 days.") : T("Paga por SINPE Móvil y le enviamos un código de acceso para activar su plan en cualquier dispositivo.", "Pay via SINPE Móvil and we'll send you an access code to activate your plan on any device.")}</p>
       <p class="muted">${user ? T("Al activar un código con su sesión iniciada, el plan queda en su cuenta y lo usa en todos sus dispositivos.", "When you activate a code while signed in, the plan is saved to your account and works on all your devices.") : T("Consejo: <button type='button' class='pl-link' data-act='auth'>cree una cuenta gratis</button> para usar su plan en todos sus dispositivos.", "Tip: <button type='button' class='pl-link' data-act='auth'>create a free account</button> to use your plan on all your devices.")}</p>
       ${user && info?.plan !== "gratis" && info?.expiresAt ? `<p class="form-msg ok">${T("Plan", "Plan")} ${esc(planName(info.plan))} ${T("activo en su cuenta hasta", "active on your account until")} ${new Date(info.expiresAt).toLocaleDateString(A.lang === "en" ? "en-US" : "es-CR")}.</p>` : ""}
       ${info?.passValid ? `<p class="form-msg ok">${T("Plan", "Plan")} ${esc(planName(info.plan))} ${T("activo hasta", "active until")} ${new Date(info.expiresAt).toLocaleDateString(A.lang === "en" ? "en-US" : "es-CR")}. <button type="button" class="pl-link" data-act="logout">${T("Quitar el código de este dispositivo", "Remove the code from this device")}</button></p>` : ""}
@@ -980,6 +983,14 @@
     if (e.target === e.currentTarget || e.target.closest("[data-close]")) return e.currentTarget.close();
     if (e.target.closest("[data-act=logout]")) { pass = null; write(K.pass, null); await refreshStatus(); openPlans(); }
     if (e.target.closest("[data-act=auth]")) { e.currentTarget.close(); openAuth("register"); }
+    const pay = e.target.closest("[data-act=pay]");
+    if (pay) {
+      // El plan queda en la cuenta: hace falta iniciar sesión antes de pagar.
+      if (!user) { e.currentTarget.close(); return openAuth("register"); }
+      const label = pay.textContent; pay.disabled = true; pay.textContent = T("Abriendo pago seguro…", "Opening secure payment…");
+      try { const r = await post("/api/pay/checkout", { plan: pay.dataset.plan }); location.href = r.url; }
+      catch (err) { pay.disabled = false; pay.textContent = label; const m = document.createElement("p"); m.className = "form-msg"; m.setAttribute("role", "alert"); m.textContent = err.message; pay.after(m); setTimeout(() => m.remove(), 7000); }
+    }
   });
   $("#pl-plans").addEventListener("submit", async e => {
     if (e.target.id !== "pl-activate") return; e.preventDefault();
@@ -1017,6 +1028,23 @@
   // ---------------- Inicio ----------------
   // Despegue: la animación de bienvenida se ve una vez por sesión del navegador.
   try { if (sessionStorage.getItem("cbpilot-despegue")) $("#pl-splash")?.remove(); else { sessionStorage.setItem("cbpilot-despegue", "1"); setTimeout(() => $("#pl-splash")?.remove(), 2000); } } catch { $("#pl-splash")?.remove(); }
+  // Vuelta desde la página de pago de ONVO: el plan se activa cuando ONVO avisa (puede tardar unos segundos).
+  const pago = new URLSearchParams(location.search).get("pago");
+  if (pago) {
+    history.replaceState(null, "", location.pathname + location.hash);
+    if (pago === "cancelado") setTimeout(() => note(T("El pago se canceló. No se le cobró nada.", "Payment was cancelled. You were not charged.")), 600);
+    else {
+      const before = info?.plan || "gratis";
+      let tries = 0;
+      const check = async () => {
+        await refreshStatus();
+        if (info?.plan && info.plan !== "gratis" && (info.plan !== before || tries > 0 && info.expiresAt)) { note(T(`¡Pago recibido! Su plan ${planName(info.plan)} ya está activo.`, `Payment received! Your ${planName(info.plan)} plan is active.`), true); setPose("celebrar", 2500); return; }
+        if (++tries < 8) setTimeout(check, 3000);
+        else note(T("Recibimos su pago y lo estamos confirmando. Si en unos minutos su plan no aparece, escríbanos por WhatsApp.", "We received your payment and are confirming it. If your plan doesn't show up in a few minutes, message us on WhatsApp."), true);
+      };
+      setTimeout(check, 1500);
+    }
+  }
   const q = new URLSearchParams(location.search).get("q");
   if (q) { $("#pl-input").value = q.slice(0, 2000); grow(); }
   if (current && !chatById(current)) current = null;

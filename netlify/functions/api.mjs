@@ -5,6 +5,7 @@ import { status, activate, chat, adminOverview, savePilotConfig, createCode, rev
 import { audit, recent } from "../lib/log.mjs";
 import * as kb from "../lib/knowledge.mjs";
 import * as users from "../lib/users.mjs";
+import { createCheckout, handleWebhook, payOnline } from "../lib/payments.mjs";
 import { json, errorResponse, readJSON, fail, rateLimit, sameOrigin, str, now } from "../lib/util.mjs";
 
 export const config = { path: "/api/*" };
@@ -16,7 +17,7 @@ const routes = {
   "POST /api/pilot/status": async (req, ctx) => {
     await rateLimit(req, ctx, "pilot-status", 120, 600);
     const b = await readJSON(req);
-    return json({ ok: true, ...(await status(req, ctx, str(b.pass, 2000))) });
+    return json({ ok: true, ...(await status(req, ctx, str(b.pass, 2000))), payOnline: payOnline() });
   },
   "POST /api/pilot/activate": async (req, ctx) => {
     if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
@@ -30,6 +31,23 @@ const routes = {
     if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
     await rateLimit(req, ctx, "pilot-chat", 40, 60);
     return chat(req, ctx, await readJSON(req, 6 * 1024 * 1024)); // incluye fotos y archivos adjuntos
+  },
+
+  // ---------------- Pagos en línea (ONVO) ----------------
+  "POST /api/pay/checkout": async (req, ctx) => {
+    if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
+    await rateLimit(req, ctx, "pay-checkout", 10, 900);
+    const u = await users.currentUser(req);
+    const r = await createCheckout(u, str((await readJSON(req)).plan, 10), new URL(req.url).origin);
+    await audit(u?.email || "cliente", "pay_checkout", "");
+    return json({ ok: true, ...r });
+  },
+  // Lo llama ONVO (no el navegador): se valida con el secreto del webhook, no con el origen.
+  "POST /api/pay/webhook": async (req, ctx) => {
+    await rateLimit(req, ctx, "pay-webhook", 120, 60);
+    const r = await handleWebhook(req, await readJSON(req));
+    if (r.handled) await audit("onvo", "pay_plan_activated", `${r.plan} ${r.userId}`);
+    return json({ ok: true });
   },
 
   // ---------------- Cuentas de clientes ----------------

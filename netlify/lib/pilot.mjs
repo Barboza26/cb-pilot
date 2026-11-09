@@ -32,7 +32,7 @@ export const DEFAULT_CONFIG = {
   freeShare: 0.7,          // el plan gratis se pausa al llegar a este % del presupuesto (el resto queda para los planes pagos)
   freePerDay: 40,
   requireAccount: false,   // true = hay que iniciar sesión para chatear (también en el plan gratis)
-  prices: { pro: null, max: null } // colones por mes; null = "consultar"
+  prices: { pro: 10000, max: 25000 } // colones por mes; null = "consultar"
 };
 
 // Netlify corta las respuestas en streaming a los ~10 s: el servidor corta antes y el navegador pide la continuación.
