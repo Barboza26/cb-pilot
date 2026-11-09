@@ -1047,7 +1047,8 @@
   }
   const q = new URLSearchParams(location.search).get("q");
   if (q) { $("#pl-input").value = q.slice(0, 2000); grow(); }
-  if (current && !chatById(current)) current = null;
+  // Cada vez que se abre la app empieza en una conversación nueva; las anteriores siguen en el menú.
+  current = null; write(K.current, null);
   settings.assistant = chatById(current)?.assistant || "general";
   syncPickers(); renderQuick(); renderPacks(); renderList(); renderPlan();
   setView(location.hash === "#tareas" ? "tasks" : "chat");
