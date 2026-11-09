@@ -153,12 +153,63 @@
       + (isHtmlLang(lang) && !open ? `<button type="button" class="pl-run" data-act="preview">${icon("play", 13)}${T("Vista previa", "Preview")}</button>` : "")
       + `<button type="button" data-act="copy-code">${icon("copy", 13)}<span>${T("Copiar", "Copy")}</span></button></div><pre><code>${esc(code)}</code></pre></div>`;
   }
+  // ---------------- Archivos descargables (Word, PDF, Excel, PowerPoint) ----------------
+  // Pilo los entrega en un bloque ```cbdoc con JSON; aquí se muestran como tarjeta y docs.js arma el archivo en el navegador.
+  const DOC_KIND = { word: ["📄", "Documento de Word", "Word document"], pdf: ["📕", "Documento PDF", "PDF document"], excel: ["📊", "Hoja de Excel", "Excel spreadsheet"], powerpoint: ["📽️", "Presentación de PowerPoint", "PowerPoint presentation"] };
+  function parseDoc(code) {
+    const tryParse = t => { try { return JSON.parse(t); } catch { return null; } };
+    let d = tryParse(code);
+    if (!d) { // saltos de línea sin escapar dentro de los textos: se arreglan sin tocar la estructura
+      let out = "", str = false, esc2 = false;
+      for (const ch of code) { if (str && !esc2 && (ch === "\n" || ch === "\r" || ch === "\t")) { out += ch === "\n" ? "\\n" : ch === "\t" ? "\\t" : ""; continue; } if (ch === '"' && !esc2) str = !str; esc2 = ch === "\\" && !esc2; out += ch; }
+      d = tryParse(out);
+    }
+    return d && DOC_KIND[d.tipo] ? d : null;
+  }
+  const docBlocks = text => [...String(text).matchAll(/^[ \t]*```cbdoc[^\n]*\n([\s\S]*?)^[ \t]*```[ \t]*$/gm)].map(m => m[1]);
+  function docCard(code, open, k) {
+    if (open) return `<div class="pl-doc is-loading"><div class="pl-doc-h"><span class="pl-doc-ic" aria-hidden="true">📄</span><div><b>${T("Preparando su archivo…", "Preparing your file…")}</b><small>${T("Pilo está armando el documento", "Pilo is putting the document together")}</small></div></div></div>`;
+    const d = parseDoc(code);
+    if (!d) return codeBlock("json", code, false);
+    const [ic, es, en] = DOC_KIND[d.tipo];
+    let meta = "", prev = "", btns = "";
+    const btn = (fmt, label, main) => `<button type="button" class="btn btn-sm ${main ? "btn-primary" : "btn-ghost"}" data-act="doc-dl" data-k="${k}" data-fmt="${fmt}">⬇ ${label}</button>`;
+    if (d.tipo === "word" || d.tipo === "pdf") {
+      const n = (String(d.contenido || "").match(/^#{1,3}\s/gm) || []).length;
+      meta = n ? T(`${n} secciones`, `${n} sections`) : T("listo para descargar", "ready to download");
+      prev = md(String(d.contenido || ""));
+      btns = btn("word", "Word", d.tipo === "word") + btn("pdf", "PDF", d.tipo === "pdf");
+    } else if (d.tipo === "excel") {
+      const hs = Array.isArray(d.hojas) ? d.hojas : [], f = Array.isArray(hs[0]?.filas) ? hs[0].filas : [];
+      meta = T(`${hs.length} ${hs.length === 1 ? "hoja" : "hojas"} · ${hs.reduce((a, h) => a + (h.filas?.length || 0), 0)} filas`, `${hs.length} sheet(s) · ${hs.reduce((a, h) => a + (h.filas?.length || 0), 0)} rows`);
+      prev = f.length ? `<div class="pl-doc-tbl"><table>${f.slice(0, 12).map((r, i) => `<tr>${(Array.isArray(r) ? r : [r]).slice(0, 8).map(c => i ? `<td>${esc(String(c ?? ""))}</td>` : `<th>${esc(String(c ?? ""))}</th>`).join("")}</tr>`).join("")}</table></div>${f.length > 12 ? `<p class="muted">${T(`…y ${f.length - 12} filas más en el archivo.`, `…and ${f.length - 12} more rows in the file.`)}</p>` : ""}` : "";
+      btns = btn("excel", "Excel", true);
+    } else {
+      const sl = Array.isArray(d.diapositivas) ? d.diapositivas : [];
+      meta = T(`${sl.length + 1} diapositivas`, `${sl.length + 1} slides`);
+      prev = `<ol>${sl.map(x => `<li>${esc(String(x.titulo || ""))}</li>`).join("")}</ol>`;
+      btns = btn("powerpoint", "PowerPoint", true);
+    }
+    return `<div class="pl-doc"><div class="pl-doc-h"><span class="pl-doc-ic" aria-hidden="true">${ic}</span><div><b>${esc(String(d.nombre || T("Documento", "Document")))}</b><small>${T(es, en)} · ${meta}</small></div></div>
+      <div class="pl-doc-b">${btns}</div>${prev ? `<details class="pl-doc-prev"><summary>${T("Ver contenido", "View content")}</summary><div class="md">${prev}</div></details>` : ""}</div>`;
+  }
+  async function downloadDoc(m, k, fmt, b) {
+    const d = parseDoc(docBlocks(m.content)[k] || "");
+    if (!d) return note(T("No pude leer ese documento. Pídale a Pilo que lo genere de nuevo.", "I couldn't read that document. Ask Pilo to generate it again."));
+    const label = b.innerHTML; b.disabled = true; b.textContent = T("Preparando…", "Preparing…");
+    try {
+      if (!window.CBPILOT_DOCS) await new Promise((ok, bad) => { const s = document.createElement("script"); s.src = "/assets/js/docs.js"; s.onload = ok; s.onerror = bad; document.head.append(s); });
+      await window.CBPILOT_DOCS.download(d, fmt, fmt === "pdf" ? md(String(d.contenido || "")) : "");
+      setPose("celebrar", 1800);
+    } catch (e) { console.error(e); note(T("No se pudo crear el archivo. Revise su conexión e intente de nuevo.", "The file couldn't be created. Check your connection and try again.")); }
+    finally { b.disabled = false; b.innerHTML = label; }
+  }
   function md(src, live) {
-    let html = "", last = 0, m;
+    let html = "", last = 0, m, k = 0;
     const re = /^[ \t]*```([\w+#.-]*)[^\n]*\n([\s\S]*?)(^[ \t]*```[ \t]*$|$(?![\s\S]))/gm;
     while ((m = re.exec(src))) {
       html += blocks(src.slice(last, m.index));
-      html += codeBlock(m[1], m[2].replace(/\n$/, ""), !m[3]);
+      html += m[1] === "cbdoc" ? docCard(m[2], !m[3], k++) : codeBlock(m[1], m[2].replace(/\n$/, ""), !m[3]);
       last = re.lastIndex;
       if (re.lastIndex === m.index) re.lastIndex++;
     }
@@ -639,7 +690,7 @@
     const b = e.target.closest("[data-q]"); if (!b) return;
     const k = b.dataset.q;
     if (k === "attach") return $("#pl-file").click();
-    if (k === "doc") { setAssistant("writer"); prefill(T("Redácteme un documento sobre ", "Write me a document about ")); }
+    if (k === "doc") { setAssistant("writer"); prefill(T("Hágame un documento de Word sobre ", "Make me a Word document about ")); }
     if (k === "code") { setAssistant("code"); prefill(""); }
     if (k === "web") { setAssistant("web"); prefill(T("Diseñe una landing page para ", "Design a landing page for ")); }
     if (k === "luck") { const c = CHIPS[Math.floor(Math.random() * CHIPS.length)]; setAssistant("general"); prefill(T(c[5], c[6])); }
@@ -903,6 +954,7 @@
     const b = e.target.closest("[data-act]"); if (!b) return;
     const chat = chatById(current), msgEl = b.closest("[data-i]"), m = chat && msgEl ? chat.messages[+msgEl.dataset.i] : null;
     switch (b.dataset.act) {
+      case "doc-dl": return downloadDoc(m, +b.dataset.k, b.dataset.fmt, b);
       case "copy-code": return copy(b.closest(".pl-code").querySelector("code").textContent, b);
       case "preview": return openPreview(b.closest(".pl-code").querySelector("code").textContent);
       case "preview-last": return openPreview(lastHtml(m.content));

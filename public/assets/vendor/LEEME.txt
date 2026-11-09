@@ -1,0 +1,4 @@
+Librerías de terceros, sin modificar (solo minificadas). Se cargan solo al descargar un archivo.
+- docx.min.js: docx 9.15.3 (MIT) https://github.com/dolanmiu/docx
+- pptxgen.bundle.min.js: PptxGenJS 4.0.1 con JSZip (MIT) https://github.com/gitbrent/PptxGenJS
+- xlsx.mini.min.js: SheetJS 0.18.5 (Apache-2.0) https://sheetjs.com — solo se usa para ESCRIBIR archivos, nunca para leer archivos subidos.

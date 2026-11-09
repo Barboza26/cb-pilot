@@ -23,3 +23,10 @@ Chat con Claude en streaming y continuación automática; varios chats a la vez;
 - **Gratis:** HTML/CSS/JS, animaciones (CSS, Web Animations, Canvas), PWA, Netlify plan gratuito con límites, Netlify Blobs dentro del plan.
 - **Con costo por uso:** la API de Claude (cada mensaje), Netlify al pasar los créditos del plan.
 - **Requiere servicio pago si se agrega:** generación de imágenes, voz realista para Pilo, procesamiento de pagos (comisión por venta), correos (hay planes gratuitos limitados).
+
+## Hecho el 09/11/2026
+- **Cuentas que no se borran en la computadora:** el servidor local guarda los datos en `.datos-locales/` (antes era memoria y se perdía al cerrar).
+- **Combustible por respuesta:** cada respuesta gasta según lo que escribe y lee Pilo; se muestra «⛽ x %» debajo de cada una.
+- **Cabina de mando explicada:** qué es el combustible, modos de vuelo, modo Ahorro y el plan.
+- **Archivos descargables:** Word, PDF, Excel (con fórmulas) y PowerPoint, armados en el navegador (sin gasto extra de IA). Librerías en `public/assets/vendor/`.
+

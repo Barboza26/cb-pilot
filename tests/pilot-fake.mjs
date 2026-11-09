@@ -45,13 +45,18 @@ console.log(saludo("Carlos"));
 
 > Configurá \`ANTHROPIC_API_KEY\` en Netlify para respuestas reales.`;
 
+// Archivos descargables simulados (para probar las tarjetas de Word, Excel y PowerPoint sin gastar).
+const DOC_WORD = 'Listo, aquí está su documento 👇\n\n```cbdoc\n' + JSON.stringify({ tipo: "word", nombre: "Plan de negocio Soda La Esquina", contenido: "## Resumen\nSoda típica en **Cartago** con casados y gallo pinto.\n\n## Objetivos\n- Vender 80 casados por día\n- Abrir pedidos por WhatsApp\n\n## Costos iniciales\n| Rubro | Monto |\n|---|---|\n| Equipo | ₡1 200 000 |\n| Permisos | ₡150 000 |\n\n1. Conseguir local\n2. Sacar permisos" }, null, 1) + '\n```\n\nPuede descargarlo en Word o PDF.';
+const DOC_EXCEL = 'Aquí tiene la hoja 📊\n\n```cbdoc\n' + JSON.stringify({ tipo: "excel", nombre: "Ventas de la semana", hojas: [{ nombre: "Ventas", filas: [["Día", "Casados", "Precio", "Total"], ["Lunes", 42, 3200, "=B2*C2"], ["Martes", 51, 3200, "=B3*C3"], ["Miércoles", 47, 3200, "=B4*C4"], ["Total", "=SUM(B2:B4)", "", "=SUM(D2:D4)"]] }] }) + '\n```';
+const DOC_PPT = 'Le armé la presentación 📽️\n\n```cbdoc\n' + JSON.stringify({ tipo: "powerpoint", nombre: "CB Pilot para emprendedores", subtitulo: "Inteligencia artificial hecha en Costa Rica", diapositivas: [{ titulo: "¿Qué es CB Pilot?", puntos: ["Un copiloto de IA tico", "Escribe, analiza y crea"], notas: "Presentar a Pilo." }, { titulo: "Planes", puntos: ["Gratis", "Pro", "Max"] }, { titulo: "Siguientes pasos", puntos: ["Crear su cuenta", "Probar gratis"] }] }) + '\n```';
+
 export function fakeClient({ delay = 8, reply, stop = "end_turn" } = {}) {
   const calls = [];
   const stream = params => {
     calls.push(params);
     let aborted = false;
     const last = String(params.messages[params.messages.length - 1]?.content || "");
-    const text = typeof reply === "function" ? reply(params) : reply ?? (/landing|página|web/i.test(last) ? LANDING : GENERAL);
+    const text = typeof reply === "function" ? reply(params) : reply ?? (/excel|hoja de c/i.test(last) ? DOC_EXCEL : /powerpoint|presentaci/i.test(last) ? DOC_PPT : /word|pdf|documento/i.test(last) ? DOC_WORD : /landing|página|web/i.test(last) ? LANDING : GENERAL);
     async function* events() {
       yield { type: "message_start", message: { model: params.model, usage: { input_tokens: 1500, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } } };
       yield { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } };
