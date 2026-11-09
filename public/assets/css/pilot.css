@@ -437,6 +437,8 @@ body.pilot-body{height:100dvh;overflow:hidden}
 .wp-original::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(56,189,248,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.18) 1px,transparent 1px);background-size:18px 18px}
 .wp-selva{background:url(/worlds/selva-vista.webp) center/cover}
 .wp-arenal{background:url(/worlds/arenal-vista.webp) center/cover}
+[data-erupcion] .wp-arenal{background-image:url(/worlds/erupcion-vista.webp)}
+.pl-erupcion{margin-top:1rem}
 .wp-caribe{background:url(/worlds/caribe-vista.webp) center/cover}
 .wp-pacifico{background:url(/worlds/atardecer-vista.webp) center/cover}
 .wp-bandera{background:url(/worlds/bandera-vista.webp) center/cover}

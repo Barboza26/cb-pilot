@@ -12,14 +12,16 @@
     // Modo Ahorro: lo elige el usuario; si nunca eligió, se activa solo cuando el sistema pide menos movimiento
     const ah = get("cbpilot-ahorro", "");
     if (ah === "1" || (ah === "" && matchMedia("(prefers-reduced-motion: reduce)").matches)) d.dataset.ahorro = ""; else delete d.dataset.ahorro;
+    // Volcán Arenal en erupción (casilla en «Explorar mundos»)
+    if (get("cbpilot-erupcion", "") === "1") d.dataset.erupcion = ""; else delete d.dataset.erupcion;
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.content = d.dataset.theme === "light" ? "#F4F7FC" : "#070D1C";
   }
   apply();
   dark.addEventListener?.("change", apply);
   window.CBPILOT_THEME = {
-    get theme() { return get("cbpilot-theme", "dark"); }, get accent() { return d.dataset.accent || "original"; }, get ahorro() { return "ahorro" in d.dataset; },
-    set(k, v) { try { localStorage.setItem({ theme: "cbpilot-theme", accent: "cbpilot-accent", ahorro: "cbpilot-ahorro" }[k], v); } catch {} apply(); }
+    get theme() { return get("cbpilot-theme", "dark"); }, get accent() { return d.dataset.accent || "original"; }, get ahorro() { return "ahorro" in d.dataset; }, get erupcion() { return "erupcion" in d.dataset; },
+    set(k, v) { try { localStorage.setItem({ theme: "cbpilot-theme", accent: "cbpilot-accent", ahorro: "cbpilot-ahorro", erupcion: "cbpilot-erupcion" }[k], v); } catch {} apply(); }
   };
   document.addEventListener("DOMContentLoaded", apply);
 })();

@@ -13,10 +13,12 @@
 
   function mount() {
     const w = d.dataset.accent || "original";
-    if (w === current) return;
-    current = w;
+    const erupcion = w === "arenal" && "erupcion" in d.dataset;
+    const key = w + (erupcion ? ":erupcion" : "");
+    if (key === current) return;
+    current = key;
     if (scene) { const old = scene; old.classList.remove("is-in"); setTimeout(() => old.remove(), 900); scene = null; }
-    const f = FILES[w];
+    const f = erupcion ? "erupcion" : FILES[w];
     host.classList.toggle("has-world", !!f);
     if (!f) return;
     const el = document.createElement("div");
@@ -30,7 +32,7 @@
     img.onload = img.onerror = () => requestAnimationFrame(() => el.isConnected && el.classList.add("is-in"));
     img.src = `/worlds/${f}-${matchMedia("(orientation: portrait)").matches ? "mobile" : "desktop"}.webp`;
   }
-  new MutationObserver(mount).observe(d, { attributes: true, attributeFilter: ["data-accent"] });
+  new MutationObserver(mount).observe(d, { attributes: true, attributeFilter: ["data-accent", "data-erupcion"] });
   mount();
 
   // Parallax muy suave con el mouse (no en pantallas táctiles, ni en modo Ahorro o con «reducir movimiento»).
