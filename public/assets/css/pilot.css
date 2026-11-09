@@ -539,3 +539,8 @@ body.pilot-body{height:100dvh;overflow:hidden}
 .pl-doc-tbl{overflow:auto}.pl-doc-tbl table{border-collapse:collapse;font-size:.8rem}.pl-doc-tbl th,.pl-doc-tbl td{border:1px solid var(--line);padding:.3rem .5rem;white-space:nowrap}
 .pl-doc.is-loading .pl-doc-ic{animation:pl-pulse 1.2s ease-in-out infinite}@keyframes pl-pulse{50%{opacity:.45}}
 .pl-msg.bot>.pl-tools,.pl-msg.bot>.pl-who,.pl-msg.bot>.pl-body{grid-column:2}.pl-msg.bot>.pl-tools{align-items:center}
+/* Bloques de código en modo claro: fondo claro (antes quedaba una franja negra) */
+[data-theme="light"] .pl-code{background:#f1f5f9}
+[data-theme="light"] .pl-code pre{color:#0f172a}
+[data-theme="light"] .pl-code-bar{background:#e2e8f0}
+[data-theme="light"] .pl-code-bar button:hover{color:#0f172a}
