@@ -143,3 +143,13 @@ servicio. El plan gratis se pausa al llegar a su parte del tope base. El panel m
 ## App instalable
 `public/sw.js` permite instalarla («Agregar a pantalla de inicio») y abrirla sin internet con lo último guardado.
 Siempre busca primero la versión nueva, así que las actualizaciones llegan de inmediato. La API nunca se guarda.
+
+## Chats en todos los dispositivos
+Opción «Guardar mis chats en mi cuenta» (Configuración). Los chats se guardan cifrados en Netlify Blobs (almacén
+`chats`), sin fotos ni archivos; al desactivarla o eliminar la cuenta se borran. No necesita configuración.
+
+## Recuperar contraseña por correo
+Con [Resend](https://resend.com) (gratis hasta 3000 correos al mes):
+1. Crear la cuenta en Resend y verificar el dominio `cebestudiocr.com` (agregar en Porkbun los registros DNS que da Resend).
+2. En Netlify: `RESEND_API_KEY` (la llave de Resend) y `MAIL_FROM`, por ejemplo `CB Pilot <no-responder@cebestudiocr.com>`.
+Sin esas variables, «¿Olvidó su contraseña?» manda a WhatsApp como antes.

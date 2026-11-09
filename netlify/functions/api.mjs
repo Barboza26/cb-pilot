@@ -7,6 +7,7 @@ import * as kb from "../lib/knowledge.mjs";
 import * as users from "../lib/users.mjs";
 import { createCheckout, handleWebhook, payOnline } from "../lib/payments.mjs";
 import * as chatStore from "../lib/chats.mjs";
+import { mailOn } from "../lib/mail.mjs";
 import { json, errorResponse, readJSON, fail, rateLimit, sameOrigin, str, now } from "../lib/util.mjs";
 
 export const config = { path: "/api/*" };
@@ -18,7 +19,7 @@ const routes = {
   "POST /api/pilot/status": async (req, ctx) => {
     await rateLimit(req, ctx, "pilot-status", 120, 600);
     const b = await readJSON(req);
-    return json({ ok: true, ...(await status(req, ctx, str(b.pass, 2000))), payOnline: payOnline() });
+    return json({ ok: true, ...(await status(req, ctx, str(b.pass, 2000))), payOnline: payOnline(), mailOn: mailOn() });
   },
   "POST /api/pilot/activate": async (req, ctx) => {
     if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
@@ -80,6 +81,20 @@ const routes = {
     if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
     await rateLimit(req, ctx, "user-login", 10, 900);
     const r = await users.login(await readJSON(req));
+    return json({ ok: true, user: users.publicUser(r.user) }, 200, { "Set-Cookie": r.cookie });
+  },
+  "POST /api/account/forgot": async (req, ctx) => {
+    if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
+    await rateLimit(req, ctx, "forgot", 5, 3600);
+    await users.forgotPassword((await readJSON(req)).email, new URL(req.url).origin);
+    return json({ ok: true });
+  },
+  "POST /api/account/reset": async (req, ctx) => {
+    if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
+    await rateLimit(req, ctx, "reset", 10, 3600);
+    const b = await readJSON(req);
+    const r = await users.resetPassword(b.token, b.password);
+    await audit(r.user.email, "password_reset", r.user.id);
     return json({ ok: true, user: users.publicUser(r.user) }, 200, { "Set-Cookie": r.cookie });
   },
   "POST /api/account/logout": async () => json({ ok: true }, 200, { "Set-Cookie": users.logoutCookie() }),

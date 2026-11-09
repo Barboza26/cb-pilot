@@ -918,22 +918,55 @@
           <div class="pl-pw"><input id="au-pw" type="password" autocomplete="${reg ? "new-password" : "current-password"}" required minlength="${reg ? 8 : 1}"><button type="button" class="pl-pw-eye" data-eye aria-label="${T("Mostrar contraseña", "Show password")}">👁</button></div></div>
         <div id="au-msg"></div>
         <button class="btn btn-primary" type="submit">${reg ? T("Crear cuenta", "Create account") : T("Entrar", "Sign in")}</button>
-        ${reg ? `<p class="muted pl-auth-legal">${T("Al crear su cuenta acepta los <a href='/terminos/' target='_blank'>términos</a> y la <a href='/privacidad/' target='_blank'>privacidad</a>.", "By creating an account you accept the <a href='/terminos/' target='_blank'>terms</a> and <a href='/privacidad/' target='_blank'>privacy policy</a>.")}</p>` : `<p class="muted pl-auth-legal">${T("¿Olvidó su contraseña? Escríbanos por", "Forgot your password? Message us on")} <a href="https://wa.me/${esc(info?.whatsapp || "")}" target="_blank" rel="noopener noreferrer">WhatsApp</a>.</p>`}
+        ${reg ? `<p class="muted pl-auth-legal">${T("Al crear su cuenta acepta los <a href='/terminos/' target='_blank'>términos</a> y la <a href='/privacidad/' target='_blank'>privacidad</a>.", "By creating an account you accept the <a href='/terminos/' target='_blank'>terms</a> and <a href='/privacidad/' target='_blank'>privacy policy</a>.")}</p>` : info?.mailOn ? `<p class="muted pl-auth-legal"><button type="button" class="pl-link" data-forgot>${T("¿Olvidó su contraseña?", "Forgot your password?")}</button></p>` : `<p class="muted pl-auth-legal">${T("¿Olvidó su contraseña? Escríbanos por", "Forgot your password? Message us on")} <a href="https://wa.me/${esc(info?.whatsapp || "")}" target="_blank" rel="noopener noreferrer">WhatsApp</a>.</p>`}
       </form>`;
     dlg.dataset.mode = mode;
     if (!dlg.open) dlg.showModal();
     $(reg ? "#au-name" : "#au-email").focus();
+  }
+  // Recuperar contraseña: «forgot» pide el correo; «reset» (al abrir el enlace del correo) pide la contraseña nueva.
+  function openRecovery(mode, token = "") {
+    const dlg = $("#pl-auth"), reset = mode === "reset";
+    $("#pl-auth-body").innerHTML = `<div class="pl-auth-head"><img class="pl-auth-orb" src="/assets/img/pilo-emblema.svg" alt="" width="64" height="64">
+        <h2 id="pl-auth-title">${reset ? T("Contraseña nueva", "New password") : T("Recuperar contraseña", "Reset password")}</h2>
+        <p class="muted">${reset ? T("Escriba su contraseña nueva. Al guardarla se cierra la sesión en sus otros dispositivos.", "Type your new password. Saving it signs you out on your other devices.") : T("Le enviamos un enlace a su correo para crear una contraseña nueva.", "We'll email you a link to create a new password.")}</p>
+        <button type="button" class="pl-icon pl-auth-x" data-close aria-label="${T("Cerrar", "Close")}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+      <form id="pl-auth-form" class="pl-auth-form" novalidate data-token="${esc(token)}">
+        ${reset ? `<div class="field"><label for="au-pw">${T("Contraseña nueva", "New password")} <small class="muted">${T("(mínimo 8 caracteres)", "(at least 8 characters)")}</small></label><div class="pl-pw"><input id="au-pw" type="password" autocomplete="new-password" required minlength="8"><button type="button" class="pl-pw-eye" data-eye aria-label="${T("Mostrar contraseña", "Show password")}">👁</button></div></div>`
+          : `<div class="field"><label for="au-email">${T("Correo de su cuenta", "Your account email")}</label><input id="au-email" type="email" autocomplete="email" required></div>`}
+        <div id="au-msg"></div>
+        <button class="btn btn-primary" type="submit">${reset ? T("Guardar contraseña", "Save password") : T("Enviar enlace", "Send link")}</button>
+        ${reset ? "" : `<p class="muted pl-auth-legal"><button type="button" class="pl-link" data-tab="login">${T("Volver a iniciar sesión", "Back to sign in")}</button></p>`}
+      </form>`;
+    authForced = false; dlg.dataset.mode = mode;
+    if (!dlg.open) dlg.showModal();
+    $(reset ? "#au-pw" : "#au-email").focus();
   }
   $("#pl-auth").addEventListener("cancel", e => { if (authForced) e.preventDefault(); });
   $("#pl-auth").addEventListener("click", e => {
     const dlg = e.currentTarget;
     if (!authForced && (e.target === dlg || e.target.closest("[data-close]"))) return dlg.close();
     const tab = e.target.closest("[data-tab]"); if (tab) return openAuth(tab.dataset.tab, authForced);
+    if (e.target.closest("[data-forgot]")) return openRecovery("forgot");
     const eye = e.target.closest("[data-eye]"); if (eye) { const i = $("#au-pw"); i.type = i.type === "password" ? "text" : "password"; }
   });
   $("#pl-auth").addEventListener("submit", async e => {
     e.preventDefault();
-    const reg = e.currentTarget.dataset.mode === "register", btn = e.target.querySelector("[type=submit]"), box = $("#au-msg");
+    const mode = e.currentTarget.dataset.mode, reg = mode === "register", btn = e.target.querySelector("[type=submit]"), box = $("#au-msg");
+    if (mode === "forgot" || mode === "reset") {
+      btn.disabled = true;
+      try {
+        if (mode === "forgot") {
+          await post("/api/account/forgot", { email: $("#au-email").value });
+          box.innerHTML = `<p class="form-msg ok" role="status">${T("Si hay una cuenta con ese correo, le llegó un enlace (vale 30 minutos). Revise también la carpeta de spam.", "If there's an account with that email, a link is on its way (valid for 30 minutes). Check your spam folder too.")}</p>`;
+        } else {
+          const r = await post("/api/account/reset", { token: e.target.dataset.token, password: $("#au-pw").value });
+          user = r.user; $("#pl-auth").close(); await refreshStatus(); renderThread();
+          note(T(`¡Listo, ${firstName()}! Su contraseña nueva quedó guardada.`, `Done, ${firstName()}! Your new password is saved.`), true);
+        }
+      } catch (err) { box.innerHTML = `<p class="form-msg" role="alert">${esc(err.message)}</p>`; btn.disabled = false; }
+      return;
+    }
     const body = { email: $("#au-email").value, password: $("#au-pw").value };
     if (reg) body.name = $("#au-name").value;
     btn.disabled = true;
@@ -1098,6 +1131,9 @@
   }
   addEventListener("offline", () => note(T("Se quedó sin internet. Puede leer sus chats; para que Pilo responda hace falta conexión.", "You're offline. You can read your chats; Pilo needs a connection to answer.")));
   addEventListener("online", () => { note(T("Conexión recuperada.", "Back online."), true); refreshStatus(); });
+  // Enlace del correo para crear contraseña nueva (?clave=...)
+  const clave = new URLSearchParams(location.search).get("clave");
+  if (clave) { history.replaceState(null, "", location.pathname + location.hash); setTimeout(() => openRecovery("reset", clave), 400); }
   // Vuelta desde la página de pago de ONVO: el plan se activa cuando ONVO avisa (puede tardar unos segundos).
   const pago = new URLSearchParams(location.search).get("pago");
   if (pago) {

@@ -50,6 +50,40 @@ export async function login({ email, password }) {
   return { user: next, cookie: await cookieFor(next) };
 }
 
+// ---------------- Recuperar contraseña por correo ----------------
+const RESET_TTL = 30 * 60e3; // el enlace vale 30 minutos
+const esc = t => String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+/** Envía el enlace para cambiar la contraseña. Siempre responde igual, exista o no la cuenta (no revela correos). */
+export async function forgotPassword(email, origin) {
+  const { sendMail, mailOn } = await import("./mail.mjs");
+  if (!mailOn()) fail(503, "mail_off", "La recuperación por correo todavía no está activa. Escríbanos por WhatsApp y le ayudamos.");
+  const mail = normEmail(email);
+  if (!isEmail(mail)) fail(400, "bad_email", "Correo inválido.");
+  const idx = await getJSON("users", emailKey(mail));
+  const u = await byId(idx?.data.id);
+  if (!u || u.blocked) return;
+  const token = randomToken(24), h = sha256("reset:" + token);
+  await putJSON("users", `reset/${h}`, { id: u.id, exp: Date.now() + RESET_TTL });
+  const link = `${String(origin).replace(/\/$/, "")}/?clave=${encodeURIComponent(token)}`;
+  await sendMail({
+    to: u.email,
+    subject: "Cambie su contraseña de CB Pilot",
+    text: `Hola ${u.name}:\n\nPara crear una contraseña nueva en CB Pilot, abra este enlace (vale 30 minutos):\n${link}\n\nSi usted no lo pidió, ignore este correo; su contraseña no cambia.\n\nPilo, de CB Pilot`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;color:#0f172a"><h2 style="color:#101D38">Cambie su contraseña</h2><p>Hola ${esc(u.name)}:</p><p>Para crear una contraseña nueva en CB Pilot, toque el botón. El enlace vale 30 minutos.</p><p><a href="${esc(link)}" style="display:inline-block;background:#2563EB;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:bold">Crear contraseña nueva</a></p><p style="color:#64748b;font-size:13px">Si usted no lo pidió, ignore este correo; su contraseña no cambia.</p><p style="color:#64748b;font-size:13px">Pilo, de CB Pilot · CeBe Studio, Costa Rica</p></div>`
+  });
+}
+/** Cambia la contraseña con el enlace del correo y cierra las sesiones abiertas. Devuelve { user, cookie }. */
+export async function resetPassword(token, password) {
+  checkPassword(password);
+  const h = sha256("reset:" + str(token, 100));
+  const r = await getJSON("users", `reset/${h}`);
+  await del("users", `reset/${h}`); // el enlace sirve una sola vez
+  if (!r || r.data.exp < Date.now()) fail(400, "bad_token", "El enlace venció o ya se usó. Pida uno nuevo.");
+  const u = await update("users", `u/${r.data.id}`, x => { if (!x) fail(400, "bad_token", "El enlace ya no es válido."); x.hash = hashPassword(password); x.sessionVersion += 1; return x; });
+  if (u.blocked) fail(403, "blocked", "Su cuenta está bloqueada. Escríbanos por WhatsApp y le ayudamos.");
+  return { user: u, cookie: await cookieFor(u) };
+}
+
 /** Usuario de la sesión actual, o null. Una sesión vieja (cambio de contraseña) deja de valer. */
 export async function currentUser(req) {
   const p = await verify(cookies(req)[COOKIE]);
