@@ -680,3 +680,9 @@ body.pilot-body{height:100dvh;overflow:hidden}
 .pl-paynote{display:block;text-align:center;color:var(--text-3);font-size:.72rem;margin-top:.4rem}
 /* Nada se sale de lado (la luz del fondo Original ensanchaba la página en el celular) */
 .pilot,.pl-main{overflow:clip}
+/* Menú lateral en celular: todo el menú se desliza y la lista de conversaciones siempre tiene espacio */
+@media (max-width:900px){
+  .pl-side{overflow-y:auto;overscroll-behavior:contain;padding-bottom:calc(1rem + env(safe-area-inset-bottom,0px));gap:.55rem}
+  .pl-side>*{flex-shrink:0}
+  .pl-side .pl-list{flex:1 0 auto;min-height:150px;max-height:none;overflow:visible}
+}
