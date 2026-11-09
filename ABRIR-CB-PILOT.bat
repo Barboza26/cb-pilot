@@ -33,7 +33,7 @@ echo.
 echo  Chat:   http://localhost:8899
 echo  Panel:  http://localhost:8899/admin/   (codigo de configuracion: codigo-local-123^)
 echo  Para cerrar CB Pilot, cerra esta ventana.
-echo  Lo que hagas aqui se borra al cerrar (es solo para probar^).
+echo  Sus cuentas y datos se guardan en la carpeta .datos-locales (no se borran al cerrar^).
 echo.
 start "" cmd /c "timeout /t 2 /nobreak >nul & start http://localhost:8899"
 node tests\servidor-local.mjs 8899

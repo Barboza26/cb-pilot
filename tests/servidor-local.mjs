@@ -1,14 +1,16 @@
-// Servidor local para probar CB Pilot SIN tocar Netlify: estáticos (public/) + API con base de datos en memoria.
+// Servidor local para probar CB Pilot SIN tocar Netlify: estáticos (public/) + API.
+// Los datos (cuentas, planes, códigos, panel) se guardan en la carpeta .datos-locales/ y NO se borran al cerrar.
+// Con MEMORIA=1 se usa una base en memoria que se borra al cerrar (para pruebas).
 // Uso: ADMIN_SETUP_CODE=codigo-local-123 node tests/servidor-local.mjs [puerto]
 // Sin gastar: PILOT_FAKE=1 usa respuestas simuladas (o simplemente: npm run dev). Con ANTHROPIC_API_KEY usa la IA real.
 import http from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { setStoreFactory, memoryFactory } from "../netlify/lib/db.mjs";
+import { setStoreFactory, memoryFactory, fileFactory } from "../netlify/lib/db.mjs";
 import handler from "../netlify/functions/api.mjs";
 import { setPilotClient } from "../netlify/lib/pilot.mjs";
 import { fakeClient } from "./pilot-fake.mjs";
-setStoreFactory(memoryFactory());
+setStoreFactory(process.env.MEMORIA ? memoryFactory() : fileFactory(path.resolve(process.env.DATOS_LOCALES || ".datos-locales")));
 if (process.env.PILOT_FAKE) setPilotClient(() => fakeClient({ delay: 25 }));
 const ROOT = path.resolve(process.argv[3] || "public");
 const TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript", ".json": "application/json", ".webp": "image/webp", ".png": "image/png", ".jpg": "image/jpeg", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".ico": "image/x-icon", ".pdf": "application/pdf", ".webmanifest": "application/manifest+json", ".txt": "text/plain" };

@@ -15,7 +15,9 @@ const PRICES = {
   "claude-opus-5-5": { in: 4, out: 20, cacheRead: 0.20, cacheWrite: 5 }
 };
 
-// Planes. "perDay"/"perMonth" = mensajes (la interfaz los muestra como % de uso); "parallel" = tareas simultáneas;
+// Planes. "perDay"/"perMonth" = unidades de combustible (la interfaz las muestra como % de uso). Cada respuesta gasta
+// según lo que de verdad usó: lo que escribió Pilo y lo que tuvo que leer (ver fuelUnits). Una respuesta corta ≈ 0,3–1 unidad;
+// una página larga, varias. "parallel" = tareas simultáneas;
 // "chars" = memoria de la conversación; "maxTokens" = largo de cada tramo (una respuesta larga sigue sola en varios tramos).
 // thinking: Haiku y Sonnet responden sin razonamiento extendido (más rápido); Opus no permite apagarlo y usa esfuerzo bajo.
 export const PLANS = {
@@ -146,7 +148,14 @@ async function resolvePlan(req, ctx, pass) {
 // ---------------- Límites y gasto ----------------
 async function usage(subject) {
   const [d, m] = await Promise.all([getJSON("pilot", `uso/${DAY()}/${subject}`), getJSON("pilot", `mes/${MONTH()}/${subject}`)]);
-  return { day: d?.data.n || 0, month: m?.data.n || 0 };
+  return { day: r2(d?.data.n || 0), month: r2(m?.data.n || 0) };
+}
+const r2 = n => Math.round(n * 100) / 100;
+/** Combustible que gasta una respuesta: 1 unidad ≈ 400 palabras-token escritas por Pilo, o 4000 leídas
+ *  (lo que ya estaba en caché cuenta al 10 %, igual que en el costo real). Mínimo 0,25 por respuesta. */
+export function fuelUnits(u) {
+  const read = (u.in || 0) + (u.cacheWrite || 0) + (u.cacheRead || 0) * 0.1;
+  return r2(Math.max(0.25, (u.out || 0) / 400 + read / 4000));
 }
 function limitsFor(plan, cfg) {
   const p = PLANS[plan];
@@ -162,15 +171,17 @@ function budgetGate(plan, cfg, s) {
   if (s.usd >= cfg.budgetUsd) fail(503, "budget", "CB Pilot alcanzó su límite de uso de este mes. Escríbanos por WhatsApp y le ayudamos.");
   if (plan === "gratis" && s.usd >= cfg.budgetUsd * cfg.freeShare) fail(503, "free_paused", "El plan gratis llegó a su límite este mes. Con un plan Pro o Max puede seguir usando CB Pilot.");
 }
-async function reserve(subject, lim) {
-  const fn = (max, msg) => cur => { const n = (cur?.n || 0) + 1; if (max !== null && n > max) fail(429, "quota", msg); return { n }; };
-  await update("pilot", `uso/${DAY()}/${subject}`, fn(lim.perDay, "Usaste el 100 % de tu uso de hoy. Se renueva a medianoche (hora de Costa Rica), o pasate a un plan con más uso."), { init: null });
-  try { await update("pilot", `mes/${MONTH()}/${subject}`, fn(lim.perMonth, "Usaste el 100 % del uso de tu plan este mes. Se renueva el mes que viene."), { init: null }); }
-  catch (e) { await refund(subject, true); throw e; }
+/** Antes de responder: solo revisa que quede combustible (lo que se gasta se sabe al terminar). */
+async function checkFuel(subject, lim) {
+  const u = await usage(subject);
+  if (lim.perDay !== null && u.day >= lim.perDay) fail(429, "quota", "Se acabó el combustible de hoy. Se recarga a medianoche (hora de Costa Rica), o puede pasarse a un plan con más uso.");
+  if (lim.perMonth !== null && u.month >= lim.perMonth) fail(429, "quota", "Se acabó el combustible de su plan este mes. Se recarga el mes que viene.");
 }
-async function refund(subject, dayOnly = false) {
-  await update("pilot", `uso/${DAY()}/${subject}`, c => ({ n: Math.max(0, (c?.n || 1) - 1) }), { init: null }).catch(() => {});
-  if (!dayOnly) await update("pilot", `mes/${MONTH()}/${subject}`, c => ({ n: Math.max(0, (c?.n || 1) - 1) }), { init: null }).catch(() => {});
+/** Al terminar: descuenta lo que de verdad gastó la respuesta. */
+async function charge(subject, units) {
+  const add = c => ({ n: r2((c?.n || 0) + units) });
+  await update("pilot", `uso/${DAY()}/${subject}`, add, { init: null }).catch(e => console.error("[pilot] no se pudo descontar el uso", e));
+  await update("pilot", `mes/${MONTH()}/${subject}`, add, { init: null }).catch(e => console.error("[pilot] no se pudo descontar el uso", e));
 }
 function costOf(model, u) {
   const p = PRICES[model] || PRICES["claude-opus-5-5"];
@@ -361,7 +372,7 @@ export async function chat(req, ctx, body) {
     if (partial) messages = [...messages, { role: "assistant", content: partial }, { role: "user", content: CONT_PROMPT }];
   }
   const lim = limitsFor(who.plan, cfg);
-  if (counted) await reserve(who.subject, lim);
+  if (counted) await checkFuel(who.subject, lim); // las continuaciones de una misma respuesta no se cortan a la mitad
 
   // Lo estable va primero y queda en caché; la base de conocimiento chica también, la búsqueda por mensaje no.
   const system = [{ type: "text", text: PERSONA() }];
@@ -405,19 +416,20 @@ export async function chat(req, ctx, body) {
         if (!cut) {
           const code = e instanceof Anthropic.RateLimitError ? "busy" : e instanceof Anthropic.AuthenticationError ? "pilot_off" : e instanceof Anthropic.APIConnectionError ? "network" : "upstream";
           if (code === "pilot_off" || code === "upstream") console.error("[pilot] error de la API", e?.status, e?.message);
-          if (counted && !text) await refund(who.subject);
           send({ t: "error", code, message: code === "busy" ? "CB Pilot está muy solicitado en este momento. Intentá de nuevo en unos segundos." : "No pude responder esta vez. Intentá de nuevo." });
         }
       } finally { clearTimeout(timer); }
       if (cut && !u.out) u.out = Math.ceil(text.length / 3.5); // corte por tiempo: se estima lo generado
       if (u.in || u.out) await record(who.plan, model, u, counted);
+      const spent = text || u.out ? fuelUnits(u) : 0; // si falló sin escribir nada, no se cobra
+      if (spent) await charge(who.subject, spent);
       {
         // Corte por tiempo o por largo: la respuesta sigue sola en otro tramo (no cuenta como mensaje nuevo).
         const more = cut || stop === "max_tokens";
         const cont = more && contN + 1 < MAX_CONT ? await sign({ k: "pcont", plan: who.plan, s: who.subject, n: contN, exp: Date.now() + 5 * 60e3 }) : null;
         const used = await usage(who.subject);
         if (stop === "refusal") send({ t: "d", v: (text ? "\n\n" : "") + "_No puedo ayudar con esa solicitud. ¿Te ayudo con otra cosa?_" });
-        send({ t: "done", stop: cont ? "continue" : stop, cont, remaining: lim.perDay === null ? null : Math.max(0, lim.perDay - used.day), usedMonth: used.month });
+        send({ t: "done", stop: cont ? "continue" : stop, cont, spent, usedToday: used.day, remaining: lim.perDay === null ? null : r2(Math.max(0, lim.perDay - used.day)), usedMonth: used.month });
       }
       if (!gone) try { controller.close(); } catch {}
     },

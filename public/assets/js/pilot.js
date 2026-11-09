@@ -202,7 +202,7 @@
   }
   /** Pide una respuesta completa: si el servidor corta por tiempo, pide la continuación sola. */
   async function ask(history, mode, signal, onText, onSources, extra = {}) {
-    let text = "", cont = null, r;
+    let text = "", cont = null, r, spent = 0;
     do {
       const seg = text;
       const body = cont ? { messages: history, partial: text, cont, mode, ...extra } : { messages: history, pass, mode, ...extra };
@@ -212,9 +212,10 @@
         else if (ev.t === "sources" && onSources) onSources(ev.items || []);
       });
       cont = r.cont;
-      if (info && r.remaining !== null && r.remaining !== undefined) { info.usedToday = Math.max(0, info.perDay - r.remaining); info.usedMonth = r.usedMonth ?? info.usedMonth; renderPlan(); }
+      spent += r.spent || 0;
+      if (info && typeof r.usedToday === "number") { info.usedToday = r.usedToday; info.usedMonth = r.usedMonth ?? info.usedMonth; renderPlan(); if (panel.open && panelKind === "cabina") refreshPanel(); }
     } while (cont && !signal.aborted);
-    return { text, stop: r.stop };
+    return { text, stop: r.stop, spent };
   }
   async function refreshStatus() {
     try { info = await post("/api/pilot/status", { pass }); if (pass && !info.passValid) { pass = null; write(K.pass, null); } }
@@ -267,6 +268,7 @@
     try {
       const r = await ask(history, "chat", ac.signal, text => { bot.content = text; paint(chat.id); if (chat.id === current && pose === "pensar") setPose("procesar"); }, items => { bot.sources = items; }, extra);
       bot.stop = r.stop;
+      if (r.spent && info?.perDay) bot.fuel = r.spent / info.perDay * 100; // % del combustible diario que gastó esta respuesta
     } catch (e) {
       if (e.name === "AbortError") bot.stop = "stopped";
       else { bot.error = e.code || "error"; bot.errorMsg = e.message; if (["quota", "free_paused", "budget"].includes(e.code)) refreshStatus(); if (e.code === "login_required") openAuth("register", true); }
@@ -356,6 +358,7 @@
       if (isLast) tools += b("regen", "regen", m.error ? T("Reintentar", "Retry") : T("Regenerar", "Regenerate"));
       if (isLast && m.content && !m.error && (m.stop === "max_tokens" || m.stop === null)) tools += b("continue", "more", T("Continuar", "Continue"));
       if (m.content && lastHtml(m.content)) tools += b("preview-last", "play", T("Vista previa", "Preview"));
+      if (m.fuel) tools += `<span class="pl-fuelchip" title="${T("Combustible que gastó esta respuesta: entre más larga, más gasta", "Fuel this response used: the longer, the more it uses")}">⛽ ${fmtPct(m.fuel)}</span>`;
       if (m.content) tools += `<button type="button" data-act="rate" data-v="up" aria-label="${T("Buena respuesta", "Good response")}" aria-pressed="${m.rating === "up"}">${icon("up")}</button><button type="button" data-act="rate" data-v="down" aria-label="${T("Mala respuesta", "Bad response")}" aria-pressed="${m.rating === "down"}">${icon("down")}</button>`;
     }
     return `<div class="pl-msg bot${live ? " is-live" : ""}${m.error ? " error" : ""}" data-i="${i}"><span class="pl-ava" aria-hidden="true">${pilo()}</span><div class="pl-who">Pilo${m.assistant && m.assistant !== "general" && ASSIST[m.assistant] ? ` · ${esc(T(ASSIST[m.assistant][1], ASSIST[m.assistant][2]))}` : ""}</div><div class="pl-body md">${body}</div>${tools ? `<div class="pl-tools">${tools}</div>` : ""}</div>`;
@@ -648,6 +651,7 @@
   const closeX = `<button type="button" class="pl-icon pl-auth-x" data-close aria-label="${T("Cerrar", "Close")}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`;
   const seg3 = (key, cur, opts) => `<div class="pl-seg3" role="group" style="grid-template-columns:repeat(${opts.length},1fr)">${opts.map(([v, label]) => `<button type="button" data-set="${key}:${v}" aria-pressed="${cur === v}">${label}</button>`).join("")}</div>`;
   const ahorroOn = () => !!window.CBPILOT_THEME?.ahorro;
+  const fmtPct = n => (n < 0.1 ? "<0,1" : n < 10 ? n.toFixed(1) : Math.round(n).toString()).replace(".", A.lang === "en" ? "." : ",") + " %";
   function ringGauge(left) {
     const c = 2 * Math.PI * 62;
     return `<svg viewBox="0 0 150 150" aria-hidden="true"><circle cx="75" cy="75" r="62" fill="none" stroke="rgba(148,163,184,.2)" stroke-width="12"/>
@@ -664,23 +668,34 @@
     cabina() {
       const pct = info?.perDay ? Math.min(100, Math.round(info.usedToday / info.perDay * 100)) : null;
       const mpct = info?.perMonth ? Math.min(100, Math.round(info.usedMonth / info.perMonth * 100)) : null;
-      const mode = (k, cls, icon, es, en, des, den, attr, on) => `<button type="button" class="pl-mode ${cls}" ${attr}="${on}" data-set="${k}"><span class="mi" aria-hidden="true">${icon}</span><b>${esc(T(es, en))}</b><small>${esc(T(des, den))}</small>${on ? `<span class="st">${T("Activo", "On")}</span>` : ""}</button>`;
-      return `<div class="pl-ph"><div><span class="eyebrow">${T("Copiloto", "Copilot")}</span><h2 id="pl-panel-title">${T("Cabina de mando", "Cockpit")}</h2><p>${T("Su plan, su uso real y cómo quiere que se comporte CB Pilot.", "Your plan, your real usage and how you want CB Pilot to behave.")}</p></div>${closeX}</div>
+      const lastFuel = [...(chatById(current)?.messages || [])].reverse().find(m => m.fuel)?.fuel;
+      const mode = (k, cls, icon, es, en, des, den, on) => `<button type="button" class="pl-mode ${cls}" aria-pressed="${on}" data-set="${k}"><span class="mi" aria-hidden="true">${icon}</span><b>${esc(T(es, en))}</b><small>${esc(T(des, den))}</small>${on ? `<span class="st">${T("Activo", "On")}</span>` : ""}</button>`;
+      return `<div class="pl-ph"><div><span class="eyebrow">${T("Copiloto", "Copilot")}</span><h2 id="pl-panel-title">${T("Cabina de mando", "Cockpit")}</h2><p>${T("Es el tablero de su copiloto: aquí ve cuánto combustible le queda hoy y elige cómo quiere que responda Pilo.", "Your copilot's dashboard: see how much fuel you have left today and choose how Pilo answers.")}</p></div>${closeX}</div>
         <div class="pl-cab">
-          <div class="pl-ring">${pct === null ? `<p class="muted">${esc(offline || T("Sin conexión con el servidor: no hay datos de uso.", "No server connection: no usage data."))}</p>` : `${ringGauge(100 - pct)}<span class="rv">${100 - pct} %</span><small>${T("Combustible de hoy: uso que le queda del plan", "Today's fuel: plan usage left")}</small>`}
+          <div class="pl-ring">${pct === null ? `<p class="muted">${esc(offline || T("Sin conexión con el servidor: no hay datos de uso.", "No server connection: no usage data."))}</p>` : `${ringGauge(100 - pct)}<span class="rv">${100 - pct} %</span><small>${T("de combustible para hoy", "fuel left today")}</small>`}
             ${info ? `<span class="pl-badge ${esc(info.plan)}">${T("Plan", "Plan")} ${esc(planName(info.plan))}</span>` : ""}</div>
-          <div class="pl-sec"><h3>${T("Modo de vuelo", "Flight mode")}</h3>
-            <div class="pl-modes">
-              ${mode("style:rapido", "m-crucero", "✈️", "Crucero", "Cruise", "Respuestas directas y al grano. Ideal para el día a día.", "Direct, to-the-point answers. Great for everyday use.", "aria-pressed", settings.style === "rapido")}
-              ${mode("style:detallado", "m-turbo", "🚀", "Turbo", "Turbo", "Respuestas más completas y razonamiento más profundo. Puede tardar un poco más.", "More complete answers and deeper reasoning. May take a bit longer.", "aria-pressed", settings.style === "detallado")}
-              ${mode("ahorro:toggle", "m-ahorro", "🌱", "Ahorro", "Saver", "Menos animaciones y efectos para cuidar la batería del dispositivo. Se combina con Crucero o Turbo.", "Fewer animations and effects to save battery. Works with Cruise or Turbo.", "aria-checked", ahorroOn())}
-            </div>
+          <div class="pl-sec"><h3>⛽ ${T("¿Qué es el combustible?", "What is fuel?")}</h3>
+            <p class="pl-explain">${T("Es el uso de inteligencia artificial que incluye su plan para hoy. <b>Cada respuesta gasta según su tamaño</b>: un saludo o una respuesta corta gasta muy poquito; una página larga, un documento o una respuesta con archivos gasta más. Se recarga solo a medianoche (hora de Costa Rica).", "It's the AI usage your plan includes for today. <b>Each response uses fuel according to its size</b>: a greeting or short answer uses very little; a long page, a document or an answer with files uses more. It refills by itself at midnight (Costa Rica time).")}</p>
             <div class="pl-stats">
-              <div class="pl-stat"><small>${T("Modelo de su plan", "Your plan's model")}</small><b>${esc(info?.label || "—")}</b></div>
-              <div class="pl-stat"><small>${T("Tareas a la vez", "Tasks at once")}</small><b>${info?.parallel ?? "—"}</b></div>
-              <div class="pl-stat"><small>${T("Uso del mes", "Monthly usage")}</small><b>${mpct === null ? T("Sin límite mensual", "No monthly limit") : mpct + " %"}</b></div>
+              <div class="pl-stat"><small>${T("Usado hoy", "Used today")}</small><b>${pct === null ? "—" : pct + " %"}</b></div>
+              <div class="pl-stat"><small>${T("Última respuesta", "Last response")}</small><b>${lastFuel ? "⛽ " + fmtPct(lastFuel) : "—"}</b></div>
+              <div class="pl-stat"><small>${T("Uso del mes", "Monthly usage")}</small><b>${mpct === null ? T("Sin límite", "No limit") : mpct + " %"}</b></div>
             </div>
-            <button type="button" class="btn btn-primary btn-sm" data-act="plans">${info?.plan === "gratis" ? T("✦ Mejorar plan", "✦ Upgrade plan") : T("Ver planes", "View plans")}</button>
+            <p class="pl-tip">${T("Consejo: debajo de cada respuesta aparece cuánto gastó (por ejemplo «⛽ 1,2 %»).", "Tip: below each response you'll see how much it used (e.g. “⛽ 1.2%”).")}</p></div>
+          <div class="pl-sec"><h3>✈️ ${T("Modo de vuelo: cómo responde Pilo", "Flight mode: how Pilo answers")}</h3>
+            <div class="pl-modes pl-modes-2">
+              ${mode("style:rapido", "m-crucero", "✈️", "Crucero", "Cruise", "Respuestas directas y al grano. Gastan menos combustible. Ideal para el día a día.", "Direct, to-the-point answers. They use less fuel. Great for everyday use.", settings.style === "rapido")}
+              ${mode("style:detallado", "m-turbo", "🚀", "Turbo", "Turbo", "Respuestas más completas y pensadas a fondo. Como son más largas, gastan más combustible y pueden tardar un poco más.", "More complete, deeply reasoned answers. Since they're longer, they use more fuel and may take a bit longer.", settings.style === "detallado")}
+            </div>
+            <p class="pl-tip">${T("También puede cambiarlo en la caja de texto, con el botón Crucero / Turbo.", "You can also change it from the message box, with the Cruise / Turbo button.")}</p></div>
+          <div class="pl-sec"><div class="pl-row"><div><h3>🌱 ${T("Modo Ahorro (de su dispositivo)", "Saver mode (your device)")}</h3><p>${T("Apaga animaciones y paisajes en movimiento para cuidar la batería y los datos del celular. No cambia las respuestas ni el combustible.", "Turns off animations and moving landscapes to save battery and data. It doesn't change answers or fuel.")}</p></div><button type="button" class="pl-switchbtn" role="switch" aria-checked="${ahorroOn()}" data-set="ahorro:toggle" aria-label="${T("Modo Ahorro", "Saver mode")}"></button></div></div>
+          <div class="pl-sec"><h3>🛩️ ${T("Su plan", "Your plan")}</h3>
+            <div class="pl-stats">
+              <div class="pl-stat"><small>${T("Inteligencia que usa", "AI it uses")}</small><b>${esc(info?.label || "—")}</b></div>
+              <div class="pl-stat"><small>${T("Respuestas a la vez", "Answers at once")}</small><b>${info?.parallel ?? "—"}</b></div>
+            </div>
+            <p class="pl-tip">${T("«Respuestas a la vez» es cuántos chats o misiones de la Torre de control pueden estar respondiendo al mismo tiempo.", "“Answers at once” is how many chats or Control tower missions can be answering at the same time.")}</p>
+            <button type="button" class="btn btn-primary btn-sm" data-act="plans">${info?.plan === "gratis" ? T("✦ Más combustible: ver planes", "✦ More fuel: see plans") : T("Ver planes", "View plans")}</button>
           </div></div>`;
     },
     settings() {

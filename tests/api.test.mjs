@@ -52,7 +52,7 @@ test("sin ANTHROPIC_API_KEY, CB Pilot avisa que no está activado y no cobra men
   assert.equal((await call("POST", "/api/pilot/status", {})).data.usedToday, 0);
 });
 
-test("responde en streaming con el modelo del plan gratis y descuenta un mensaje", async () => {
+test("responde en streaming con el modelo del plan gratis y descuenta combustible según lo usado", async () => {
   fake = fakeClient({ delay: 0 });
   setPilotClient(() => fake);
   const r = await call("POST", "/api/pilot/chat", user("Hola, ¿qué podés hacer?"), { ip: "10.1.0.2" });
@@ -61,7 +61,9 @@ test("responde en streaming con el modelo del plan gratis y descuenta un mensaje
   assert.match(r.text, /CB Pilot/);
   assert.equal(r.done.stop, "end_turn");
   assert.equal(r.done.cont, null);
-  assert.equal(r.done.remaining, DEFAULT_CONFIG.freePerDay - 1);
+  assert.ok(r.done.spent >= 0.25 && r.done.spent < 2, `gasto de una respuesta corta: ${r.done.spent}`);
+  assert.equal(r.done.remaining, Math.round((DEFAULT_CONFIG.freePerDay - r.done.spent) * 100) / 100);
+  assert.equal(r.done.usedToday, r.done.spent);
   const p = fake.calls.at(-1);
   assert.equal(p.model, "claude-haiku-5-5");
   assert.equal(p.betas, undefined, "Haiku no usa el parámetro fallbacks");
@@ -87,17 +89,17 @@ test("el modo tarea agrega sus instrucciones sin romper el prefijo en caché", a
 });
 
 test("el límite diario del plan gratis se respeta", async () => {
-  await savePilotConfig({ ...DEFAULT_CONFIG, freePerDay: 2 });
+  await savePilotConfig({ ...DEFAULT_CONFIG, freePerDay: 1 });
   const ip = "10.1.0.4";
-  assert.equal((await call("POST", "/api/pilot/chat", user("uno"), { ip })).status, 200);
-  assert.equal((await call("POST", "/api/pilot/chat", user("dos"), { ip })).status, 200);
-  const r = await call("POST", "/api/pilot/chat", user("tres"), { ip });
+  let r, n = 0;
+  do { r = await call("POST", "/api/pilot/chat", user("hola " + n), { ip }); n++; } while (r.status === 200 && n < 10);
+  assert.ok(n > 1 && n < 10, `se corta al acabarse el combustible (intentos: ${n})`);
   assert.equal(r.status, 429);
   assert.equal(r.data.error, "quota");
   await savePilotConfig({ ...DEFAULT_CONFIG });
 });
 
-test("si se acerca el límite de tiempo, corta y la continuación no cuenta como mensaje nuevo", async () => {
+test("si se acerca el límite de tiempo, corta y la continuación solo descuenta lo que escribe", async () => {
   process.env.PILOT_DEADLINE_MS = "600";
   const slow = fakeClient({ delay: 40, reply: "palabra ".repeat(60) });
   setPilotClient(() => slow);
@@ -110,7 +112,7 @@ test("si se acerca el límite de tiempo, corta y la continuación no cuenta como
   process.env.PILOT_DEADLINE_MS = "60000";
   const c = await call("POST", "/api/pilot/chat", { ...user("Escribí algo largo"), partial: r.text, cont: r.done.cont }, { ip: "10.1.0.99" });
   assert.equal(c.status, 200);
-  assert.equal(c.done.remaining, before, "no descuenta otro mensaje");
+  assert.ok(c.done.remaining < before && before - c.done.remaining < 3, "descuenta solo lo generado en la continuación");
   const p = slow.calls.at(-1);
   assert.equal(p.messages.at(-2).role, "assistant");
   assert.equal(p.messages.at(-2).content, r.text);
@@ -190,13 +192,22 @@ test("asistentes, modo detallado y archivos adjuntos", async () => {
   assert.equal((await call("POST", "/api/pilot/chat", { ...user("x"), attachments: Array(6).fill({ kind: "text", name: "a", text: "b" }) }, { ip: "10.1.0.23" })).data.error, "too_many_files");
 });
 
-test("si la respuesta llega al largo máximo, sigue sola sin contar otro mensaje", async () => {
+test("si la respuesta llega al largo máximo, sigue sola y la continuación se cobra por lo que escribe", async () => {
   const long = fakeClient({ delay: 0, reply: "parte ", stop: "max_tokens" });
   setPilotClient(() => long);
   const r = await call("POST", "/api/pilot/chat", user("Una página enorme"), { ip: "10.1.0.30" });
   assert.equal(r.done.stop, "continue");
   assert.ok(r.done.cont);
   const c = await call("POST", "/api/pilot/chat", { ...user("Una página enorme"), partial: r.text, cont: r.done.cont }, { ip: "10.1.0.30" });
-  assert.equal(c.done.remaining, r.done.remaining, "la continuación no descuenta uso");
+  assert.ok(c.done.spent > 0 && c.done.remaining < r.done.remaining, "la continuación descuenta lo que escribe");
+  setPilotClient(() => fake);
+});
+
+test("una respuesta larga gasta más combustible que una corta", async () => {
+  setPilotClient(() => fakeClient({ delay: 0, reply: "Listo." }));
+  const corta = await call("POST", "/api/pilot/chat", user("hola"), { ip: "10.1.0.40" });
+  setPilotClient(() => fakeClient({ delay: 0, reply: "Esta es una explicación larga y detallada. ".repeat(220) }));
+  const larga = await call("POST", "/api/pilot/chat", user("explicame todo"), { ip: "10.1.0.41" });
+  assert.ok(larga.done.spent > corta.done.spent * 3, `corta ${corta.done.spent} vs larga ${larga.done.spent}`);
   setPilotClient(() => fake);
 });

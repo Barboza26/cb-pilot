@@ -523,3 +523,9 @@ body.pilot-body{height:100dvh;overflow:hidden}
 .has-world .pl-note{color:var(--text-2);text-shadow:0 1px 8px rgba(var(--bg-rgb),.9)}
 
 .cr-flag{width:1.35em;height:.81em;vertical-align:-.08em;border-radius:2px;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
+.pl-fuelchip{display:inline-flex;align-items:center;gap:.25rem;padding:.2rem .55rem;border-radius:999px;font:600 .72rem/1 var(--f-mono);color:var(--text-3);border:1px solid var(--line);margin-left:.25rem;cursor:help}
+.pl-explain{color:var(--text-2);font-size:.9rem;line-height:1.55;margin:.2rem 0 .8rem}.pl-explain b{color:var(--strong)}
+.pl-tip{color:var(--text-3);font-size:.78rem;margin-top:.6rem}
+.pl-modes.pl-modes-2{grid-template-columns:repeat(2,1fr)}
+@media (max-width:480px){.pl-modes.pl-modes-2{grid-template-columns:1fr}}
+.pl-cab>.pl-sec:nth-child(n+3){grid-column:1/-1}
