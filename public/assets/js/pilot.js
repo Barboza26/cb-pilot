@@ -83,7 +83,52 @@
   let current = read(K.current, null), pass = read(K.pass, null);
   let info = null, view = "chat", query = "";
   const running = new Map(); // id de chat o tarea → AbortController
-  const saveChats = () => { chats.sort((a, b) => (b.updated || 0) - (a.updated || 0)); chats = chats.slice(0, 80); write(K.chats, chats); write(K.current, current); };
+  const saveChats = () => { chats.sort((a, b) => (b.updated || 0) - (a.updated || 0)); chats = chats.slice(0, 80); write(K.chats, chats); write(K.current, current); syncSoon(); };
+
+  // ---------------- Chats en la cuenta (opcional: «Guardar mis chats en mi cuenta») ----------------
+  // Con la opción activa, los chats se suben cifrados a la cuenta y se bajan en los otros dispositivos.
+  // Gana la versión más reciente de cada chat. Sin la opción, todo queda solo en este dispositivo.
+  const syncOn = () => !!(user && user.syncChats);
+  const SYNC_K = () => "cbpilot-sync-" + (user?.id || "");
+  let syncTimer = 0, syncBusy = false, lastPull = 0, pendingDel = new Set(read("cbpilot-sync-del", []));
+  function syncSoon(ms = 2500) { if (!syncOn()) return; clearTimeout(syncTimer); syncTimer = setTimeout(pushChats, ms); }
+  async function pushChats() {
+    if (!syncOn() || syncBusy || !navigator.onLine) return;
+    syncBusy = true;
+    try {
+      const done = read(SYNC_K(), {});
+      if (pendingDel.size) { await post("/api/chats/delete", { ids: [...pendingDel].slice(0, 100) }); pendingDel.clear(); write("cbpilot-sync-del", []); }
+      const dirty = chats.filter(c => c.messages.length && !running.has(c.id) && (done[c.id] || 0) < (c.updated || 0));
+      for (let i = 0; i < dirty.length; i += 20) {
+        const part = dirty.slice(i, i + 20);
+        await post("/api/chats/save", { chats: part });
+        part.forEach(c => { done[c.id] = c.updated || 0; });
+        write(SYNC_K(), done);
+      }
+    } catch (e) { if (e.code === "sync_off") { user.syncChats = false; } else syncSoon(30000); }
+    finally { syncBusy = false; }
+  }
+  async function pullChats(force) {
+    if (!syncOn() || (!force && Date.now() - lastPull < 20000)) return;
+    lastPull = Date.now();
+    try {
+      const r = await post2("/api/chats");
+      const done = read(SYNC_K(), {}); let changed = false;
+      for (const sc of r.chats || []) {
+        if (pendingDel.has(sc.id)) continue;
+        const i = chats.findIndex(c => c.id === sc.id);
+        if (i === -1) { chats.push(sc); changed = true; }
+        else if ((sc.updated || 0) > (chats[i].updated || 0) && !running.has(sc.id)) { chats[i] = sc; changed = true; }
+        done[sc.id] = Math.max(done[sc.id] || 0, sc.updated || 0);
+      }
+      write(SYNC_K(), done);
+      if (changed) { chats.sort((a, b) => (b.updated || 0) - (a.updated || 0)); write(K.chats, chats); renderList(); if (current && chatById(current)) renderThread(); }
+      pushChats(); // lo que solo está en este dispositivo sube a la cuenta
+    } catch { /* sin conexión: se reintenta al volver */ }
+  }
+  const post2 = async url => { const res = await fetch(url, { credentials: "same-origin" }); const d = await res.json().catch(() => ({})); if (!res.ok || d.ok === false) throw fail(d.error || "error", d.message || "Error"); return d; };
+  const forgetChat = id => { if (syncOn()) { pendingDel.add(id); write("cbpilot-sync-del", [...pendingDel]); syncSoon(500); } };
+  addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") pullChats(); });
   const saveTasks = () => write(K.tasks, tasks.slice(0, 60));
   // Lo que quedó a medias al cerrar la página se marca como interrumpido.
   for (const c of chats) for (const m of c.messages) if (m.pending) { delete m.pending; if (!m.content) { m.error = "cut"; m.errorMsg = "La respuesta se interrumpió."; } }
@@ -272,6 +317,7 @@
     try { info = await post("/api/pilot/status", { pass }); if (pass && !info.passValid) { pass = null; write(K.pass, null); } }
     catch (e) { info = null; if (e.code === "offline") offline = e.message; }
     user = info?.user || null;
+    if (syncOn()) pullChats();
     renderAcct(); renderPlan();
     if (info?.requireAccount && !user && !(panel.open && panelKind === "welcome")) openAuth("register", true); $("#pl-model").textContent = info ? info.label : "CB Pilot";
     if (!current || !chatById(current)?.messages.length) renderThread();
@@ -772,7 +818,8 @@
           <p class="muted">${T("En documentos legales, cartas o textos profesionales siempre usa un tono formal.", "Legal documents, letters and professional texts always use a formal tone.")}</p></div>
         <div class="pl-sec"><div class="pl-row"><div><h3>${T("Modo Ahorro", "Saver mode")}</h3><p>${T("Menos animaciones y efectos. Recomendado en celulares con poca batería.", "Fewer animations and effects. Recommended on phones with low battery.")}</p></div><button type="button" class="pl-switchbtn" role="switch" aria-checked="${ahorroOn()}" data-set="ahorro:toggle" aria-label="${T("Modo Ahorro", "Saver mode")}"></button></div></div>
         <div class="pl-sec"><h3>${T("Idioma de la interfaz", "Interface language")}</h3>${seg3("lang", A.lang, [["es", "Español"], ["en", "English"]])}</div>
-        <div class="pl-sec"><h3>${T("Datos", "Data")}</h3><div class="pl-row"><p>${T("Sus chats y tareas se guardan en este dispositivo.", "Your chats and tasks are stored on this device.")}</p><button type="button" class="btn btn-ghost btn-sm pl-danger" data-act="wipe">${T("Borrar historial", "Delete history")}</button></div>
+        <div class="pl-sec"><div class="pl-row"><div><h3>☁️ ${T("Guardar mis chats en mi cuenta", "Save my chats to my account")}</h3><p>${user ? T("Sus conversaciones aparecen en todos los dispositivos donde inicie sesión. Se guardan cifradas; las fotos y archivos no se suben. Si lo desactiva, se borran de la cuenta (no de este dispositivo).", "Your conversations show up on every device where you sign in. They're stored encrypted; photos and files aren't uploaded. Turning it off deletes them from your account (not from this device).") : T("Inicie sesión para ver sus conversaciones en todos sus dispositivos.", "Sign in to see your conversations on all your devices.")}</p></div>${user ? `<button type="button" class="pl-switchbtn" role="switch" aria-checked="${syncOn()}" data-set="sync:toggle" aria-label="${T("Guardar mis chats en mi cuenta", "Save my chats to my account")}"></button>` : `<button type="button" class="btn btn-ghost btn-sm" data-act="auth">${T("Iniciar sesión", "Sign in")}</button>`}</div></div>
+        <div class="pl-sec"><h3>${T("Datos", "Data")}</h3><div class="pl-row"><p>${syncOn() ? T("Sus chats están en este dispositivo y en su cuenta.", "Your chats are on this device and in your account.") : T("Sus chats y tareas se guardan en este dispositivo.", "Your chats and tasks are stored on this device.")}</p><button type="button" class="btn btn-ghost btn-sm pl-danger" data-act="wipe">${T("Borrar historial", "Delete history")}</button></div>
           <div class="pl-row"><p>${user ? esc(user.email) : T("Sin sesión iniciada", "Not signed in")}</p><button type="button" class="btn btn-ghost btn-sm" data-act="${user ? "account" : "auth"}">${user ? T("Mi cuenta", "My account") : T("Iniciar sesión", "Sign in")}</button></div></div>`;
     },
     welcome() {
@@ -802,6 +849,12 @@
       if (k === "habla") { settings.habla = v; write("cbpilot-habla", v); }
       if (k === "style") { settings.style = v; write("cbpilot-style", v); syncPickers(); }
       if (k === "ahorro") window.CBPILOT_THEME?.set("ahorro", ahorroOn() ? "0" : "1");
+      if (k === "sync" && user) {
+        const on = !syncOn();
+        if (!on && !confirm(T("¿Dejar de guardar sus chats en la cuenta? Se borrarán de la cuenta; en este dispositivo se quedan.", "Stop saving chats to your account? They'll be deleted from your account; they stay on this device."))) return;
+        try { const r = await post("/api/account/profile", { syncChats: on }); user = r.user; if (on) { write(SYNC_K(), {}); await pullChats(true); note(T("Listo: sus chats se guardan en su cuenta.", "Done: your chats are saved to your account."), true); } else note(T("Listo: sus chats ya no se guardan en la cuenta.", "Done: your chats are no longer saved to your account."), true); }
+        catch (e) { note(e.message); }
+      }
       if (k === "erupcion") {
         const on = !window.CBPILOT_THEME?.erupcion;
         window.CBPILOT_THEME?.set("erupcion", on ? "1" : "0");
@@ -817,7 +870,7 @@
     if (act === "account") { panel.close(); openAccount(); }
     if (act === "auth") { panel.close(); openAuth("login"); }
     if (act === "wipe" && confirm(T("¿Borrar todos los chats y tareas de este dispositivo? No se puede deshacer.", "Delete all chats and tasks on this device? This can't be undone."))) {
-      running.forEach(c => c.abort()); chats = []; tasks = []; current = null; saveChats(); saveTasks(); renderList(); renderThread(); paintTasks(); panel.close();
+      running.forEach(c => c.abort()); chats.forEach(c => forgetChat(c.id)); chats = []; tasks = []; current = null; saveChats(); saveTasks(); renderList(); renderThread(); paintTasks(); panel.close();
       note(T("Listo: el historial de este dispositivo se borró.", "Done: this device's history was deleted."), true);
     }
   });
@@ -886,7 +939,7 @@
     btn.disabled = true;
     try {
       const r = await post(reg ? "/api/account/register" : "/api/account/login", body);
-      user = r.user; authForced = false; $("#pl-auth").close();
+      user = r.user; authForced = false; $("#pl-auth").close(); if (syncOn()) pullChats(true);
       await refreshStatus(); renderThread();
       note(reg ? T(`¡Bienvenido, ${firstName()}! Su cuenta está lista.`, `Welcome, ${firstName()}! Your account is ready.`) : T(`¡Hola de nuevo, ${firstName()}!`, `Welcome back, ${firstName()}!`), true);
     } catch (err) { box.innerHTML = `<p class="form-msg" role="alert">${esc(err.message)}</p>`; btn.disabled = false; }
@@ -906,7 +959,7 @@
       <form class="pl-acc-card" id="acc-profile"><h3>${T("Perfil", "Profile")}</h3><div class="field"><label for="acc-name">${T("Nombre", "Name")}</label><input id="acc-name" value="${esc(user.name)}" maxlength="80" required></div><div class="acc-msg"></div><button class="btn btn-primary btn-sm" type="submit">${T("Guardar", "Save")}</button></form>
       <form class="pl-acc-card" id="acc-password"><h3>${T("Contraseña", "Password")}</h3><div class="fields"><div class="field"><label for="acc-cur">${T("Actual", "Current")}</label><input id="acc-cur" type="password" autocomplete="current-password" required></div><div class="field"><label for="acc-new">${T("Nueva (mínimo 8)", "New (min. 8)")}</label><input id="acc-new" type="password" autocomplete="new-password" minlength="8" required></div></div>
         <p class="muted">${T("Al cambiarla se cierra la sesión en sus otros dispositivos.", "Changing it signs you out on your other devices.")}</p><div class="acc-msg"></div><button class="btn btn-primary btn-sm" type="submit">${T("Cambiar contraseña", "Change password")}</button></form>
-      <section class="pl-acc-card"><h3>${T("Privacidad", "Privacy")}</h3><p class="muted">${T("Sus chats se guardan solo en este dispositivo. Su cuenta guarda su nombre, correo, plan y uso.", "Your chats are stored only on this device. Your account stores your name, email, plan and usage.")}</p>
+      <section class="pl-acc-card"><h3>${T("Privacidad", "Privacy")}</h3><p class="muted">${(user?.syncChats ? T("Sus chats se guardan cifrados en su cuenta (lo puede apagar en Configuración). Su cuenta también guarda su nombre, correo, plan y uso.", "Your chats are saved encrypted in your account (you can turn it off in Settings). Your account also stores your name, email, plan and usage.") : T("Sus chats se guardan solo en este dispositivo. Su cuenta guarda su nombre, correo, plan y uso.", "Your chats are stored only on this device. Your account stores your name, email, plan and usage."))}</p>
         <div class="pl-acc-row"><button type="button" class="btn btn-ghost btn-sm" data-act="logout">${T("Cerrar sesión", "Sign out")}</button><button type="button" class="btn btn-ghost btn-sm pl-danger" data-act="delete">${T("Eliminar mi cuenta", "Delete my account")}</button></div>
         <form id="acc-delete" hidden><div class="field"><label for="acc-del">${T("Para confirmar, escriba su contraseña", "To confirm, enter your password")}</label><input id="acc-del" type="password" autocomplete="current-password" required></div><div class="acc-msg"></div><button class="btn btn-primary btn-sm pl-danger-btn" type="submit">${T("Eliminar definitivamente", "Delete permanently")}</button></form></section>`;
     const dlg = $("#pl-account"); if (!dlg.open) dlg.showModal();
@@ -960,7 +1013,7 @@
     else if (b.dataset.act === "pin") { c.pinned = !c.pinned; saveChats(); renderList(); }
     else if (b.dataset.act === "rename") { const t = prompt(T("Nuevo nombre del chat", "New chat name"), c.title); if (t && t.trim()) { c.title = titleFrom(t); saveChats(); renderList(); if (id === current) renderThread(); } }
     else if (b.dataset.act === "delete" && confirm(T("¿Eliminar este chat? No se puede deshacer.", "Delete this chat? This can't be undone."))) {
-      running.get(id)?.abort(); chats = chats.filter(x => x.id !== id); if (current === id) current = null; saveChats(); renderList(); renderThread();
+      running.get(id)?.abort(); chats = chats.filter(x => x.id !== id); forgetChat(id); if (current === id) current = null; saveChats(); renderList(); renderThread();
     }
   });
 

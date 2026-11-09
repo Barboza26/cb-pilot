@@ -711,3 +711,4 @@ body.pilot-body{height:100dvh;overflow:hidden}
   .pl-hello .pl-pilo{width:96px;height:96px}
   .pl-hello .pilo-hero.pilo-pose{width:92px;height:92px}
 }
+.pl-seg3 button{display:inline-flex;align-items:center;justify-content:center;gap:.35rem;flex-wrap:wrap}

@@ -12,7 +12,7 @@ const normEmail = e => str(e, 160).toLowerCase();
 /** Plan vigente de la cuenta ("gratis" si no tiene o ya venció). */
 export const activePlan = u => (u && PAID.includes(u.plan) && u.planExpiresAt && Date.parse(u.planExpiresAt) > Date.now() ? u.plan : "gratis");
 /** Lo que se puede mostrar del usuario (nunca el hash ni datos internos). */
-export const publicUser = u => u && { id: u.id, name: u.name, email: u.email, plan: activePlan(u), planExpiresAt: activePlan(u) === "gratis" ? null : u.planExpiresAt, createdAt: u.createdAt };
+export const publicUser = u => u && { id: u.id, name: u.name, email: u.email, plan: activePlan(u), planExpiresAt: activePlan(u) === "gratis" ? null : u.planExpiresAt, createdAt: u.createdAt, syncChats: !!u.syncChats };
 
 async function cookieFor(u) {
   const t = await sign({ k: "user", sub: u.id, v: u.sessionVersion, exp: Date.now() + TTL });
@@ -63,10 +63,12 @@ export async function requireUser(req) {
   return u;
 }
 
-export async function updateProfile(u, { name }) {
-  const nm = str(name, 80);
+export async function updateProfile(u, { name, syncChats }) {
+  const nm = name === undefined ? u.name : str(name, 80);
   if (!nm) fail(400, "no_name", "Escriba su nombre.");
-  return update("users", `u/${u.id}`, x => { x.name = nm; return x; });
+  const r = await update("users", `u/${u.id}`, x => { x.name = nm; if (typeof syncChats === "boolean") x.syncChats = syncChats; return x; });
+  if (syncChats === false) { const { wipeChats } = await import("./chats.mjs"); await wipeChats(u.id); } // al desactivarlo se borran de la cuenta
+  return r;
 }
 export async function changePassword(u, current, next) {
   checkPassword(next);
@@ -80,6 +82,7 @@ export async function changePassword(u, current, next) {
 export async function deleteAccount(u, password) {
   if (!verifyPassword(String(password || ""), u.hash)) fail(403, "bad_password", "La contraseña no coincide.");
   await del("users", `u/${u.id}`); await del("users", emailKey(u.email));
+  const { wipeChats } = await import("./chats.mjs"); await wipeChats(u.id);
 }
 
 /** Guarda un plan en la cuenta (por código canjeado o asignado por el dueño). */
@@ -119,7 +122,7 @@ export async function adminAction(id, action, data = {}) {
       const user = await update("users", `u/${u.id}`, x => { x.hash = hashPassword(temp); x.sessionVersion += 1; return x; });
       return { user, tempPassword: temp };
     }
-    case "delete": await del("users", `u/${u.id}`); await del("users", emailKey(u.email)); return { user: null };
+    case "delete": { await del("users", `u/${u.id}`); await del("users", emailKey(u.email)); const { wipeChats } = await import("./chats.mjs"); await wipeChats(u.id); return { user: null }; }
     default: fail(400, "bad_action", "Acción inválida.");
   }
 }

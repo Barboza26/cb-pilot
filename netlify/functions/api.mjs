@@ -6,6 +6,7 @@ import { audit, recent } from "../lib/log.mjs";
 import * as kb from "../lib/knowledge.mjs";
 import * as users from "../lib/users.mjs";
 import { createCheckout, handleWebhook, payOnline } from "../lib/payments.mjs";
+import * as chatStore from "../lib/chats.mjs";
 import { json, errorResponse, readJSON, fail, rateLimit, sameOrigin, str, now } from "../lib/util.mjs";
 
 export const config = { path: "/api/*" };
@@ -31,6 +32,23 @@ const routes = {
     if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
     await rateLimit(req, ctx, "pilot-chat", 40, 60);
     return chat(req, ctx, await readJSON(req, 6 * 1024 * 1024)); // incluye fotos y archivos adjuntos
+  },
+
+  // ---------------- Chats guardados en la cuenta (opcional) ----------------
+  "GET /api/chats": async (req, ctx) => {
+    await rateLimit(req, ctx, "chats-list", 60, 600);
+    return json({ ok: true, chats: await chatStore.listChats(await users.currentUser(req)) });
+  },
+  "POST /api/chats/save": async (req, ctx) => {
+    if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
+    await rateLimit(req, ctx, "chats-save", 120, 600);
+    return json({ ok: true, ...(await chatStore.saveChats(await users.currentUser(req), (await readJSON(req, 4 * 1024 * 1024)).chats)) });
+  },
+  "POST /api/chats/delete": async (req, ctx) => {
+    if (!sameOrigin(req)) fail(403, "bad_origin", "Origen no permitido.");
+    await rateLimit(req, ctx, "chats-delete", 60, 600);
+    await chatStore.deleteChats(await users.currentUser(req), (await readJSON(req)).ids);
+    return json({ ok: true });
   },
 
   // ---------------- Pagos en línea (ONVO) ----------------
