@@ -435,13 +435,7 @@ body.pilot-body{height:100dvh;overflow:hidden}
 .pl-world .tag{position:absolute;top:8px;left:8px;font:700 .58rem/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;padding:.3rem .45rem;border-radius:999px;background:rgba(7,13,28,.7);color:#fff}
 .wp-original{background:radial-gradient(circle at 70% 30%,rgba(56,189,248,.5),transparent 45%),linear-gradient(160deg,#101D38,#070D1C);background-color:#070D1C}
 .wp-original::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(56,189,248,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.18) 1px,transparent 1px);background-size:18px 18px}
-.wp-selva{background:url(/worlds/selva-vista.webp) center/cover}
-.wp-arenal{background:url(/worlds/arenal-vista.webp) center/cover}
-[data-erupcion] .wp-arenal{background-image:url(/worlds/erupcion-vista.webp)}
 .pl-erupcion{margin-top:1rem}
-.wp-caribe{background:url(/worlds/caribe-vista.webp) center/cover}
-.wp-pacifico{background:url(/worlds/atardecer-vista.webp) center/cover}
-.wp-bandera{background:url(/worlds/bandera-vista.webp) center/cover}
 
 /* Cabina de mando */
 .pl-cab{display:grid;grid-template-columns:240px minmax(0,1fr);gap:1rem}
@@ -503,10 +497,6 @@ body.pilot-body{height:100dvh;overflow:hidden}
 .pl-main.has-world::before,.pl-main.has-world::after{display:none}
 .pl-scene{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none;opacity:0;transition:opacity .9s ease;background:var(--bg)}
 .pl-scene.is-in{opacity:1}
-.pl-scene .ly{position:absolute;inset:-14px;background:var(--d) center/cover no-repeat;will-change:transform;
-  transform:translate3d(calc(var(--px,0) * -18px),calc(var(--py,0) * -10px),0);transition:transform .5s ease-out;animation:world-breathe 50s ease-in-out infinite alternate}
-@media (orientation:portrait){.pl-scene .ly{background-image:var(--m)}}
-.scene-bandera{background:#0b152b}
 @keyframes world-breathe{from{scale:1}to{scale:1.025}}
 /* Velo para que el texto se lea siempre: más oscuro arriba (barra) y abajo (caja de texto) */
 .pl-scene::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(var(--bg-rgb),.55) 0,rgba(var(--bg-rgb),.08) 22%,rgba(var(--bg-rgb),.14) 60%,rgba(var(--bg-rgb),.86) 100%)}
@@ -635,4 +625,55 @@ body.pilot-body{height:100dvh;overflow:hidden}
 @keyframes pl-sheet{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.pdialog{animation:none}}
 /* En celular el fondo queda quieto: sin agrandarlo, para que se vea nítido */
-@media (max-width:640px){.pl-scene .ly{inset:0;animation:none;transform:none}}
+
+/* =====================================================================
+   Mundos de color: un degradado de base (.ly) y tres luces suaves (.glow) que se mueven despacio.
+   Cada mundo define sus colores con variables; el modo claro usa versiones más luminosas.
+   ===================================================================== */
+.pl-scene{--b1:#070D1C;--b2:#101D38;--b3:#070D1C;--c1:56,189,248;--c2:37,99,235;--c3:148,163,184}
+.pl-scene .ly{position:absolute;inset:0;background:radial-gradient(120% 80% at 50% 110%,var(--b3),transparent 60%),linear-gradient(170deg,var(--b1),var(--b2) 55%,var(--b3))}
+.pl-scene .glow{position:absolute;border-radius:50%;filter:blur(70px);opacity:.75;will-change:transform;animation:glow-drift 26s ease-in-out infinite alternate}
+.pl-scene .g1{width:62vmax;height:62vmax;left:-18vmax;top:-22vmax;background:radial-gradient(circle,rgba(var(--c1),.75),transparent 65%)}
+.pl-scene .g2{width:55vmax;height:55vmax;right:-20vmax;top:18%;background:radial-gradient(circle,rgba(var(--c2),.6),transparent 65%);animation-duration:34s;animation-delay:-8s}
+.pl-scene .g3{width:70vmax;height:42vmax;left:12%;bottom:-24vmax;background:radial-gradient(ellipse,rgba(var(--c3),.55),transparent 65%);animation-duration:40s;animation-delay:-15s}
+@keyframes glow-drift{0%{transform:translate(0,0) scale(1)}50%{transform:translate(4vmax,3vmax) scale(1.08)}100%{transform:translate(-3vmax,-2vmax) scale(.96)}}
+.pl-scene::before{content:"";position:absolute;inset:0;z-index:1;opacity:.05;background-image:radial-gradient(rgba(255,255,255,.9) .6px,transparent .7px);background-size:3px 3px;mix-blend-mode:overlay}
+/* Selva: verdes profundos, neblina y un rayo de sol */
+.scene-selva{--b1:#04150d;--b2:#0b2a1a;--b3:#06331f;--c1:250,204,21;--c2:16,185,129;--c3:52,211,153}
+.scene-selva .g1{opacity:.35}
+/* Volcán Arenal: crepúsculo azul con brasas cálidas */
+.scene-arenal{--b1:#0e1530;--b2:#2a1a2e;--b3:#3b1607;--c1:96,165,250;--c2:251,146,60;--c3:220,38,38}
+.scene-arenal .g1{opacity:.45}
+/* Arenal en erupción: lava y ceniza */
+[data-erupcion] .scene-arenal{--b1:#14090a;--b2:#2a0d07;--b3:#5a1404;--c1:120,113,108;--c2:249,115,22;--c3:239,68,68}
+[data-erupcion] .scene-arenal .g3{opacity:.95;animation-duration:9s}
+[data-erupcion] .scene-arenal .g2{animation-duration:14s}
+/* Caribe: turquesa y arena */
+.scene-caribe{--b1:#032a3a;--b2:#05505a;--b3:#0b6a6a;--c1:125,211,252;--c2:45,212,191;--c3:253,230,138}
+.scene-caribe .g3{opacity:.4}
+/* Atardecer del Pacífico: naranja, rosado y violeta */
+.scene-pacifico{--b1:#1e1b4b;--b2:#5b1f4f;--b3:#7c2d12;--c1:167,139,250;--c2:236,72,153;--c3:251,191,36}
+.scene-pacifico .g3{opacity:.85;width:80vmax;height:30vmax;bottom:-12vmax}
+/* Bandera: azul, blanco y rojo en franjas suaves */
+.scene-bandera{--b1:#001a4d;--b2:#0b1f4a;--b3:#001a4d;--c1:0,43,127;--c2:206,17,38;--c3:255,255,255}
+.scene-bandera .ly{background:linear-gradient(180deg,#001a4d 0 14%,#1b2f5e 22%,#5a1a2e 42% 58%,#1b2f5e 78%,#001a4d 86%)}
+.scene-bandera .g1{opacity:.55}.scene-bandera .g2{opacity:.5}.scene-bandera .g3{opacity:.12}
+/* Modo claro: los mismos mundos, más luminosos */
+[data-theme="light"] .pl-scene .glow{opacity:.45}
+[data-theme="light"] .scene-selva{--b1:#e7f6ee;--b2:#d2efe0;--b3:#bfe6d0}
+[data-theme="light"] .scene-arenal{--b1:#e6ecfb;--b2:#f6e3dc;--b3:#fbd3bd}
+[data-theme="light"] [data-erupcion] .scene-arenal,[data-theme="light"][data-erupcion] .scene-arenal{--b1:#f5e9e4;--b2:#f8d7c6;--b3:#f6b593}
+[data-theme="light"] .scene-caribe{--b1:#e0f6fb;--b2:#cdf1f0;--b3:#fff4d1}
+[data-theme="light"] .scene-pacifico{--b1:#ece7ff;--b2:#fbe0ee;--b3:#fde4c4}
+[data-theme="light"] .scene-bandera .ly{background:linear-gradient(180deg,#dfe7f8 0 14%,#eef2fb 22%,#f8dde1 42% 58%,#eef2fb 78%,#dfe7f8 86%)}
+@media (max-width:640px){.pl-scene .glow{filter:blur(48px)}}
+@media (prefers-reduced-motion:reduce){.pl-scene .glow{animation:none}}
+[data-ahorro] .pl-scene .glow{animation:none!important}
+
+/* Miniaturas en «Explorar mundos» */
+.wp-selva{background:radial-gradient(circle at 20% 15%,rgba(250,204,21,.45),transparent 45%),radial-gradient(circle at 85% 70%,rgba(52,211,153,.55),transparent 55%),linear-gradient(170deg,#04150d,#0b2a1a 55%,#06331f)}
+.wp-arenal{background:radial-gradient(circle at 25% 15%,rgba(96,165,250,.55),transparent 45%),radial-gradient(ellipse at 55% 110%,rgba(220,38,38,.7),transparent 55%),radial-gradient(circle at 85% 50%,rgba(251,146,60,.5),transparent 50%),linear-gradient(170deg,#0e1530,#2a1a2e 55%,#3b1607)}
+[data-erupcion] .wp-arenal{background:radial-gradient(circle at 25% 15%,rgba(120,113,108,.6),transparent 45%),radial-gradient(ellipse at 50% 110%,rgba(239,68,68,.9),transparent 55%),radial-gradient(circle at 80% 55%,rgba(249,115,22,.7),transparent 50%),linear-gradient(170deg,#14090a,#2a0d07 55%,#5a1404)}
+.wp-caribe{background:radial-gradient(circle at 20% 15%,rgba(125,211,252,.6),transparent 45%),radial-gradient(ellipse at 50% 115%,rgba(253,230,138,.55),transparent 50%),radial-gradient(circle at 85% 50%,rgba(45,212,191,.55),transparent 50%),linear-gradient(170deg,#032a3a,#05505a 55%,#0b6a6a)}
+.wp-pacifico{background:radial-gradient(circle at 20% 15%,rgba(167,139,250,.55),transparent 45%),radial-gradient(ellipse at 50% 105%,rgba(251,191,36,.75),transparent 45%),radial-gradient(circle at 85% 45%,rgba(236,72,153,.6),transparent 50%),linear-gradient(170deg,#1e1b4b,#5b1f4f 55%,#7c2d12)}
+.wp-bandera{background:linear-gradient(180deg,#002B7F 0 17%,#F8FAFC 17% 33%,#CE1126 33% 67%,#F8FAFC 67% 83%,#002B7F 83%)}
