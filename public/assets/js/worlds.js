@@ -41,5 +41,6 @@
       x = (e.clientX - r.left) / r.width - .5; y = (e.clientY - r.top) / r.height - .5;
       if (!raf) raf = requestAnimationFrame(() => { raf = 0; scene?.style.setProperty("--px", x.toFixed(3)); scene?.style.setProperty("--py", y.toFixed(3)); });
     }, { passive: true });
+    host.addEventListener("pointerleave", () => { x = 0; y = 0; scene?.style.setProperty("--px", "0"); scene?.style.setProperty("--py", "0"); }, { passive: true });
   }
 })();

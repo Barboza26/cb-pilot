@@ -12,7 +12,7 @@
 import crypto from "node:crypto";
 import { getJSON, putJSON, update } from "./db.mjs";
 import { fail, now } from "./util.mjs";
-import { setPlan, activePlan } from "./users.mjs";
+import { activePlan } from "./users.mjs";
 import { addBudget } from "./pilot.mjs";
 
 const API = () => (process.env.ONVO_API_URL || "https://api.onvopay.com").replace(/\/$/, "");
@@ -77,19 +77,27 @@ export async function handleWebhook(req, body) {
   const id = body?.data?.id;
   if (!id) return { handled: false };
   const rec = await getJSON("pagos", `p/${id}`);
-  if (!rec || rec.data.status !== "pending") return { handled: false }; // pedido desconocido o ya aplicado (ONVO puede reintentar)
-  let applied = null;
+  if (!rec || rec.data.status !== "pending") return { handled: false };
+  const payment = rec.data;
+  // El recibo y la extensión se escriben juntos en la cuenta. Los avisos repetidos y
+  // los reintentos tras un fallo de almacenamiento nunca vuelven a sumar días.
+  await update("users", `u/${payment.userId}`, u => {
+    if (!u) fail(404, "not_found", "La cuenta del pago no existe.");
+    if (u.paymentReceipts?.[id]) return u;
+    const from = activePlan(u) === payment.plan ? Date.parse(u.planExpiresAt) : Date.now();
+    u.plan = payment.plan;
+    u.planExpiresAt = new Date(from + DAYS * 864e5).toISOString();
+    u.planCodeId = null;
+    u.planUpdatedAt = now();
+    u.paymentReceipts = { ...u.paymentReceipts, [id]: now() };
+    return u;
+  });
+  // También es idempotente: si falla, devolvemos error para que ONVO reintente.
+  await addBudget(payment.plan, id);
+  let handled = false;
   await update("pagos", `p/${id}`, cur => {
-    if (!cur || cur.status !== "pending") return cur; // pedido desconocido o ya aplicado: no hace nada (ONVO puede reintentar)
-    applied = cur;
-    return { ...cur, status: "paid", paidAt: now() };
-  }).catch(e => { if (e?.status !== 409) throw e; });
-  if (!applied) return { handled: false };
-  // Suma 30 días: si ya tiene ese plan vigente, a partir del vencimiento; si no, desde hoy.
-  const u = (await getJSON("users", `u/${applied.userId}`))?.data;
-  if (!u) { console.error("[pagos] pago de una cuenta que ya no existe", applied.userId, id); return { handled: false }; }
-  const from = activePlan(u) === applied.plan ? Date.parse(u.planExpiresAt) : Date.now();
-  await setPlan(u.id, applied.plan, new Date(from + DAYS * 864e5).toISOString(), null);
-  await addBudget(applied.plan).catch(e => console.error("[pagos] no se pudo sumar presupuesto", e));
-  return { handled: true, plan: applied.plan, userId: u.id };
+    handled = !!cur && cur.status === "pending";
+    return handled ? { ...cur, status: "paid", paidAt: now() } : cur;
+  });
+  return handled ? { handled: true, plan: payment.plan, userId: payment.userId } : { handled: false };
 }

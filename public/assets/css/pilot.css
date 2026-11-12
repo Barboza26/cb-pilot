@@ -712,3 +712,13 @@ body.pilot-body{height:100dvh;overflow:hidden}
   .pl-hello .pilo-hero.pilo-pose{width:92px;height:92px}
 }
 .pl-seg3 button{display:inline-flex;align-items:center;justify-content:center;gap:.35rem;flex-wrap:wrap}
+
+/* Panel plegable también en escritorio; inicia cerrado para dar espacio al chat. */
+@media (min-width:901px){
+  .pilot.side-closed{grid-template-columns:minmax(0,1fr)}
+  .pilot.side-closed.has-canvas{grid-template-columns:minmax(0,1fr) minmax(380px,46%)}
+  .pilot.side-closed .pl-side{display:none}
+  .pl-side{background:linear-gradient(165deg,rgba(var(--a1),.12),transparent 70%),rgba(var(--bg-rgb),.92)}
+  .pilot:not(.side-closed) #pl-side-open{display:none}
+}
+@media (min-width:901px) and (max-width:1180px){.pilot.side-closed.has-canvas{grid-template-columns:minmax(0,1fr)}}
