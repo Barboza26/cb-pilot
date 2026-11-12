@@ -170,10 +170,14 @@ export async function spend() {
 // PILOT_BUDGET_PER_PRO / PILOT_BUDGET_PER_MAX (US$ por pago; por defecto 8 y 15).
 export const BUDGET_PER = () => ({ pro: Number(process.env.PILOT_BUDGET_PER_PRO) || 8, max: Number(process.env.PILOT_BUDGET_PER_MAX) || 15 });
 export async function budgetExtra() { return (await getJSON("pilot", `extra/${MONTH()}`))?.data?.usd || 0; }
-export async function addBudget(plan) {
+export async function addBudget(plan, paymentId = null) {
   const add = BUDGET_PER()[plan] || 0;
   if (!add) return;
-  await update("pilot", `extra/${MONTH()}`, c => ({ usd: Math.round(((c?.usd || 0) + add) * 100) / 100, pagos: (c?.pagos || 0) + 1 }), { init: null });
+  await update("pilot", `extra/${MONTH()}`, c => {
+    if (paymentId && c?.receipts?.[paymentId]) return c;
+    return { ...c, usd: Math.round(((c?.usd || 0) + add) * 100) / 100, pagos: (c?.pagos || 0) + 1,
+      ...(paymentId ? { receipts: { ...c?.receipts, [paymentId]: true } } : {}) };
+  }, { init: null });
 }
 function budgetGate(plan, cfg, s) {
   if (!cfg.enabled) fail(503, "pilot_paused", "CB Pilot está en mantenimiento. Vuelva en un ratito.");

@@ -50,6 +50,7 @@
     pose = p;
     document.querySelectorAll("[data-pilo-pose]").forEach(img => {
       img.src = poseSrc(p);
+      img.setAttribute("aria-label", T(POSE_ALT[p] || "Pilo", "Pilo"));
       img.classList.remove("is-pop", "is-arriving"); void img.offsetWidth; img.classList.add("is-pop");
     });
     const dock = $("#pl-dock"); if (dock) dock.title = T(POSE_ALT[p] || "Pilo", "Pilo");
@@ -71,17 +72,15 @@
     try { localStorage.setItem(k, JSON.stringify(v)); return true; }
     catch {
       if (k !== K.chats) return false;
-      // Sin espacio: se quitan los chats más viejos que no estén fijados.
-      const old = [...chats].reverse().find(c => !c.pinned && !running.has(c.id));
-      if (!old) return false;
-      chats = chats.filter(c => c !== old);
-      return write(k, chats);
+      note(T("No se pudieron guardar sus chats en este dispositivo. Libere espacio; copie sus mensajes antes de cerrar la página.", "Your chats could not be saved on this device. Free space; copy your messages before closing the page."));
+      return false;
     }
   }
   let chats = (Array.isArray(read(K.chats, [])) ? read(K.chats, []) : []).filter(c => c && c.id && Array.isArray(c.messages));
   let tasks = (Array.isArray(read(K.tasks, [])) ? read(K.tasks, []) : []).filter(t => t && t.id && t.prompt);
   let current = read(K.current, null), pass = read(K.pass, null);
   let info = null, view = "chat", query = "";
+  let checkoutBusy = false;
   const running = new Map(); // id de chat o tarea → AbortController
   const saveChats = () => { chats.sort((a, b) => (b.updated || 0) - (a.updated || 0)); chats = chats.slice(0, 80); write(K.chats, chats); write(K.current, current); syncSoon(); };
 
@@ -97,10 +96,10 @@
     syncBusy = true;
     try {
       const done = read(SYNC_K(), {});
-      if (pendingDel.size) { await post("/api/chats/delete", { ids: [...pendingDel].slice(0, 100) }); pendingDel.clear(); write("cbpilot-sync-del", []); }
+      while (pendingDel.size) { const ids = [...pendingDel].slice(0, 100); await post("/api/chats/delete", { ids }); ids.forEach(id => pendingDel.delete(id)); write("cbpilot-sync-del", [...pendingDel]); }
       const dirty = chats.filter(c => c.messages.length && !running.has(c.id) && (done[c.id] || 0) < (c.updated || 0));
       for (let i = 0; i < dirty.length; i += 20) {
-        const part = dirty.slice(i, i + 20);
+        const part = structuredClone(dirty.slice(i, i + 20));
         await post("/api/chats/save", { chats: part });
         part.forEach(c => { done[c.id] = c.updated || 0; });
         write(SYNC_K(), done);
@@ -279,7 +278,7 @@
     if (!ct.includes("ndjson") || !res.body) throw fail("offline", T("CB Pilot necesita su servidor en línea.", "CB Pilot needs its online server."));
     const reader = res.body.getReader(), dec = new TextDecoder();
     let buf = "", done = null;
-    for (;;) {
+    try { for (;;) {
       const { value, done: end } = await reader.read();
       if (end) break;
       buf += dec.decode(value, { stream: true });
@@ -293,6 +292,9 @@
         onEvent(ev);
       }
     }
+    buf += dec.decode();
+    if (buf.trim()) { const ev = JSON.parse(buf); if (ev.t === "error") throw fail(ev.code, ev.message); if (ev.t === "done") done = ev; onEvent(ev); }
+    } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
     if (!done) throw fail("cut", T("La respuesta se interrumpió. Pruebe de nuevo.", "The response was interrupted. Please try again."));
     return done;
   }
@@ -623,8 +625,11 @@
     renderList();
   }
   const side = $("#pl-side"), scrim = $("#pl-scrim");
-  function openSide() { side.classList.add("is-open"); scrim.hidden = false; }
-  function closeSide() { side.classList.remove("is-open"); scrim.hidden = true; }
+  function openSide() { root.classList.remove("side-closed"); side.inert = false; side.classList.add("is-open"); scrim.hidden = !matchMedia("(max-width:900px)").matches; $("#pl-side-open").setAttribute("aria-expanded", "true"); $("#pl-side-close").focus(); }
+  function closeSide() { root.classList.add("side-closed"); side.classList.remove("is-open"); side.inert = true; scrim.hidden = true; $("#pl-side-open").setAttribute("aria-expanded", "false"); }
+  closeSide();
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && side.classList.contains("is-open") && !document.querySelector("dialog[open]")) { closeSide(); $("#pl-side-open").focus(); } });
+  matchMedia("(max-width:900px)").addEventListener("change", closeSide);
 
   // ---------------- Caja de texto: modo, asistente, adjuntos y voz ----------------
   const settings = { style: read("cbpilot-style", "rapido") === "detallado" ? "detallado" : "rapido", assistant: "general", habla: ["tico", "neutro", "formal"].includes(read("cbpilot-habla", "tico")) ? read("cbpilot-habla", "tico") : "tico" };
@@ -1082,11 +1087,13 @@
     if (e.target.closest("[data-act=auth]")) { e.currentTarget.close(); openAuth("register"); }
     const pay = e.target.closest("[data-act=pay]");
     if (pay) {
+      if (checkoutBusy) return;
       // El plan queda en la cuenta: hace falta iniciar sesión antes de pagar.
       if (!user) { e.currentTarget.close(); return openAuth("register"); }
+      checkoutBusy = true;
       const label = pay.textContent; pay.disabled = true; pay.textContent = T("Abriendo pago seguro…", "Opening secure payment…");
       try { const r = await post("/api/pay/checkout", { plan: pay.dataset.plan }); location.href = r.url; }
-      catch (err) { pay.disabled = false; pay.textContent = label; const m = document.createElement("p"); m.className = "form-msg"; m.setAttribute("role", "alert"); m.textContent = err.message; pay.after(m); setTimeout(() => m.remove(), 7000); }
+      catch (err) { checkoutBusy = false; pay.disabled = false; pay.textContent = label; const m = document.createElement("p"); m.className = "form-msg"; m.setAttribute("role", "alert"); m.textContent = err.message; pay.after(m); setTimeout(() => m.remove(), 7000); }
     }
   });
   $("#pl-plans").addEventListener("submit", async e => {
@@ -1130,7 +1137,7 @@
     addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
   }
   addEventListener("offline", () => note(T("Se quedó sin internet. Puede leer sus chats; para que Pilo responda hace falta conexión.", "You're offline. You can read your chats; Pilo needs a connection to answer.")));
-  addEventListener("online", () => { note(T("Conexión recuperada.", "Back online."), true); refreshStatus(); });
+  addEventListener("online", () => { pullChats(true); syncSoon(0); note(T("Conexión recuperada.", "Back online."), true); refreshStatus(); });
   // Enlace del correo para crear contraseña nueva (?clave=...)
   const clave = new URLSearchParams(location.search).get("clave");
   if (clave) { history.replaceState(null, "", location.pathname + location.hash); setTimeout(() => openRecovery("reset", clave), 400); }
